@@ -17,6 +17,9 @@ COPY ./contrib/supervisord.conf /etc/supervisord.conf
 # will accept gin-repo as AuthorizedKeysCommand
 RUN chmod -R 755 $GOPATH
 
+# speed up things by pre-go getting dependencies
+RUN go get "github.com/docopt/docopt-go"
+
 RUN mkdir -p $GOPATH/src/github.com/G-Node/gin-repo
 WORKDIR $GOPATH/src/github.com/G-Node/gin-repo
 
