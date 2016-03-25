@@ -10,7 +10,10 @@ import (
 	"github.com/docopt/docopt-go"
 
 	. "github.com/G-Node/gin-repo/common"
+	"github.com/G-Node/gin-repo/wire"
 	"github.com/G-Node/gin-repo/ssh"
+	"path/filepath"
+	"strings"
 )
 
 func getRepoDir() string {
@@ -23,10 +26,52 @@ func getRepoDir() string {
 	return dir
 }
 
-func repoInfo(w http.ResponseWriter, r *http.Request) {
+func translatePath(vpath string, uid string) string {
+	dir := os.Getenv("GIN_REPO_DIR")
+
+	if dir == "" {
+		dir = "."
+	}
+
+	if strings.HasPrefix(vpath, "'") && strings.HasSuffix(vpath, "'") {
+		vpath = vpath[1 : len(vpath)-1]
+	}
+
+	path := filepath.Join(dir, uid, vpath)
+
+	if !strings.HasSuffix(path, ".git") {
+		path += ".git"
+	}
+
+	path, err := filepath.Abs(path)
+
+	//TODO: propagate the error
+	if err != nil {
+		return path
+	}
+
+	fmt.Fprintf(os.Stderr, "[D] tp: %s@%s -> %s\n", uid, vpath, path)
+
+	return path
+}
+
+func repoAccess(w http.ResponseWriter, r *http.Request) {
 	log.Printf("R: %s @ %v", r.Method, r.URL.String())
 
-	w.WriteHeader(http.StatusNotImplemented)
+	decoder := json.NewDecoder(r.Body)
+	var query wire.RepoAccessQuery
+	err := decoder.Decode(&query)
+
+	if err != nil || query.Path == "" || query.User == "" || query.Method == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(os.Stderr, "Error precessing request: %v", err)
+		return
+	}
+
+	//TODO: check access here
+
+	path := translatePath(query.Path, query.User)
+	w.Write([]byte(path))
 }
 
 func lookupUser(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +124,7 @@ Options:
 	fmt.Println(args)
 
 	http.HandleFunc("/intern/user/lookup", lookupUser)
-	http.HandleFunc("/intern/repos/", repoInfo)
+	http.HandleFunc("/intern/repos/access", repoAccess)
 
 	hostport := ":8888"
 	log.Printf("Listening on " + hostport)
