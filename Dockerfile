@@ -22,6 +22,7 @@ RUN ln -sf $GOPATH/bin/gin-repo /usr/bin/gin-repo
 
 # speed up things by pre-go getting dependencies
 RUN go get "github.com/docopt/docopt-go"
+RUN go get "github.com/gorilla/mux"
 
 RUN mkdir -p $GOPATH/src/github.com/G-Node/gin-repo
 WORKDIR $GOPATH/src/github.com/G-Node/gin-repo

@@ -9,9 +9,11 @@ import (
 
 	"github.com/docopt/docopt-go"
 
+	"github.com/gorilla/mux"
+
 	. "github.com/G-Node/gin-repo/common"
-	"github.com/G-Node/gin-repo/wire"
 	"github.com/G-Node/gin-repo/ssh"
+	"github.com/G-Node/gin-repo/wire"
 	"path/filepath"
 	"strings"
 )
@@ -123,8 +125,10 @@ Options:
 	args, _ := docopt.Parse(usage, nil, true, "gin repod 0.1a", false)
 	fmt.Println(args)
 
-	http.HandleFunc("/intern/user/lookup", lookupUser)
-	http.HandleFunc("/intern/repos/access", repoAccess)
+	r := mux.NewRouter()
+	r.HandleFunc("/intern/user/lookup", lookupUser).Methods("GET")
+	r.HandleFunc("/intern/repos/access", repoAccess).Methods("POST")
+	http.Handle("/", r)
 
 	hostport := ":8888"
 	log.Printf("Listening on " + hostport)
