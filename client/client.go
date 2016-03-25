@@ -28,6 +28,8 @@ func (client *Client) LookupUserByFingerprint(fingerprint string) (*User, error)
 	res, err := web.Get(url)
 	if err != nil {
 		return nil, err
+	} else if status := res.StatusCode; status != 200 {
+		return nil, fmt.Errorf("Server returned non-OK status: %d", status)
 	}
 
 	defer res.Body.Close()
