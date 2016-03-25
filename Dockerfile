@@ -27,5 +27,8 @@ COPY . $GOPATH/src/github.com/G-Node/gin-repo
 RUN go get -d -v ./...
 RUN go install -v ./...
 
+WORKDIR /data
+
+
 EXPOSE 22 8888
 CMD ["/usr/bin/supervisord", "-c/etc/supervisord.conf"]
