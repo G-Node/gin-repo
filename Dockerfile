@@ -9,8 +9,12 @@ RUN passwd -d git
 COPY ./contrib/ssh_host_rsa_key* /etc/ssh/
 COPY ./contrib/sshd_config /etc/ssh/
 
+RUN chmod -R 600 /etc/ssh/ssh_host_rsa_key
+
 COPY ./contrib/supervisord.conf /etc/supervisord.conf
 
+# we need to have 755 permissions so sshd
+# will accept gin-repo as AuthorizedKeysCommand
 RUN chmod -R 755 $GOPATH
 
 RUN mkdir -p $GOPATH/src/github.com/G-Node/gin-repo
