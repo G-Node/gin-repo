@@ -112,9 +112,9 @@ func main() {
 	usage := `gin repo daemon.
 
 Usage:
-  gin-repo
-  gin-repo -h | --help
-  gin-repo --version
+  gin-repod
+  gin-repod -h | --help
+  gin-repod --version
 
 Options:
   -h --help     Show this screen.
