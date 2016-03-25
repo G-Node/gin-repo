@@ -3,7 +3,7 @@ FROM golang:1.6-alpine
 RUN apk add --update git openssh supervisor && rm -rf /var/cache/apk/*
 
 RUN addgroup -S git
-RUN adduser -D -S -h /data -G git git
+RUN adduser -D -S -h /data -G git -s /bin/sh git
 RUN passwd -d git
 
 COPY ./contrib/ssh_host_rsa_key* /etc/ssh/
