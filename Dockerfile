@@ -17,6 +17,9 @@ COPY ./contrib/supervisord.conf /etc/supervisord.conf
 # will accept gin-repo as AuthorizedKeysCommand
 RUN chmod -R 755 $GOPATH
 
+# make gin-repo available in $PATH for ssh connections
+RUN ln -sf $GOPATH/bin/gin-repo /usr/bin/gin-repo
+
 # speed up things by pre-go getting dependencies
 RUN go get "github.com/docopt/docopt-go"
 
