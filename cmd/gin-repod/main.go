@@ -9,6 +9,7 @@ import (
 
 	"github.com/docopt/docopt-go"
 
+	. "github.com/G-Node/gin-repo/common"
 	"github.com/G-Node/gin-repo/ssh"
 )
 
@@ -43,7 +44,9 @@ func lookupUser(w http.ResponseWriter, r *http.Request) {
 	keys := ssh.ReadKeysInDir(getRepoDir())
 
 	if key, ok := keys[val[0]]; ok {
-		data, err := json.Marshal(key)
+		user := User{Uid: key.Comment, Keys: []ssh.Key{key}}
+
+		data, err := json.Marshal(user)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -76,7 +79,7 @@ Options:
 	fmt.Println(args)
 
 	http.HandleFunc("/intern/user/lookup", lookupUser)
-	http.HandleFunc("/intern/repo/", repoInfo)
+	http.HandleFunc("/intern/repos/", repoInfo)
 
 	hostport := ":8888"
 	log.Printf("Listening on " + hostport)
