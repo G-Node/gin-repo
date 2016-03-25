@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/G-Node/gin-repo/client"
 	"github.com/G-Node/gin-repo/ssh"
 )
 
@@ -29,7 +30,16 @@ func cmdKeysList(args map[string]interface{}, keys map[string]ssh.Key) {
 }
 
 func cmdKeysSSHd(fingerprint string, keys map[string]ssh.Key) {
-	if key, ok := keys[fingerprint]; ok {
+	client := client.NewClient("http://localhost:8888")
+
+	user, err := client.LookupUserByFingerprint(fingerprint)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "No key found: %v", err)
+		os.Exit(-10)
+	}
+
+	for _, key := range user.Keys {
 		path, err := exec.LookPath("gin-repo")
 
 		if err != nil {
@@ -40,14 +50,11 @@ func cmdKeysSSHd(fingerprint string, keys map[string]ssh.Key) {
 		out.WriteString("command=\"")
 		out.WriteString(path)
 		out.WriteString(" shell ")
-		out.WriteString(key.Comment)
+		out.WriteString(user.Uid)
 		out.WriteString("\" ")
 		out.Write(key.Keydata)
 
 		os.Stdout.Write(out.Bytes())
-	} else {
-		fmt.Fprintf(os.Stderr, "No key for fingerprint")
-		os.Exit(-10)
 	}
 }
 
