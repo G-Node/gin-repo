@@ -14,7 +14,7 @@ import (
 func gitUploadPack(arg string, uid string) {
 
 	client := client.NewClient("http://localhost:8888")
-	path, err := client.RepoAccess(arg, uid, "push")
+	path, err := client.RepoAccess(arg, uid, "pull")
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[E] repo access error: %v", err)
@@ -24,6 +24,31 @@ func gitUploadPack(arg string, uid string) {
 	cmd := exec.Command("git-upload-pack", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	err = cmd.Run()
+
+	if err != nil {
+		ee := err.(*exec.ExitError)
+		os.Exit(ee.Sys().(syscall.WaitStatus).ExitStatus())
+	}
+}
+
+func gitReceivePack(arg string, uid string) {
+
+	client := client.NewClient("http://localhost:8888")
+	path, err := client.RepoAccess(arg, uid, "push")
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[E] repo access error: %v", err)
+		os.Exit(-10)
+	}
+
+	fmt.Fprintf(os.Stderr, "[D] grp: %s", path)
+	cmd := exec.Command("git-receive-pack", path)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 
 	err = cmd.Run()
 
@@ -67,7 +92,9 @@ func cmdShell(args map[string]interface{}) {
 	case "git-upload-pack":
 		gitUploadPack(gitarg, uid)
 
-	//case "git-receive-pack":
+	case "git-receive-pack":
+		gitReceivePack(gitarg, uid)
+
 	default:
 		fmt.Fprintf(os.Stderr, "[E] unhandled command: %s", gitcmd)
 		os.Exit(23)
