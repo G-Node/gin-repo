@@ -58,7 +58,7 @@ func translatePath(vpath string, uid string) string {
 }
 
 func repoAccess(w http.ResponseWriter, r *http.Request) {
-	log.Printf("R: %s @ %v", r.Method, r.URL.String())
+	log.Printf("repoAccess: %s @ %v", r.Method, r.URL.String())
 
 	decoder := json.NewDecoder(r.Body)
 	var query wire.RepoAccessQuery
@@ -77,7 +77,7 @@ func repoAccess(w http.ResponseWriter, r *http.Request) {
 }
 
 func lookupUser(w http.ResponseWriter, r *http.Request) {
-	log.Printf("R: %s @ %s", r.Method, r.URL.String())
+	log.Printf("lookupUser: %s @ %s", r.Method, r.URL.String())
 
 	query := r.URL.Query()
 
