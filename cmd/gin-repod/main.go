@@ -16,6 +16,7 @@ import (
 	"github.com/G-Node/gin-repo/wire"
 	"path/filepath"
 	"strings"
+	"gopkg.in/libgit2/git2go.v23"
 )
 
 func getRepoDir() string {
@@ -110,6 +111,41 @@ func lookupUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func createRepo(w http.ResponseWriter, r *http.Request) {
+	log.Printf("createRepo: %s @ %s", r.Method, r.URL.String())
+
+	decoder := json.NewDecoder(r.Body)
+	var creat wire.CreateRepo
+	err := decoder.Decode(&creat)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(os.Stderr, "Error precessing request: %v", err)
+		return
+	} else if creat.Name == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(os.Stderr, "Error precessing request: name missing")
+		return
+	}
+
+	//TODO: check name for sanity
+
+	vars := mux.Vars(r)
+	user := vars["user"]
+
+	path := translatePath(creat.Name, user)
+
+	_, err = git.InitRepository(path, true)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+
 func main() {
 	usage := `gin repo daemon.
 
@@ -128,6 +164,9 @@ Options:
 	r := mux.NewRouter()
 	r.HandleFunc("/intern/user/lookup", lookupUser).Methods("GET")
 	r.HandleFunc("/intern/repos/access", repoAccess).Methods("POST")
+
+	r.HandleFunc("/users/{user}/repos", createRepo).Methods("POST")
+
 	http.Handle("/", r)
 
 	hostport := ":8888"

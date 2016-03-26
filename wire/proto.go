@@ -5,3 +5,8 @@ type RepoAccessQuery struct {
 	Path   string
 	Method string
 }
+
+type CreateRepo struct {
+	Name string
+	Description string
+}
