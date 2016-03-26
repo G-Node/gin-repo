@@ -11,6 +11,23 @@ import (
 	"github.com/G-Node/gin-repo/client"
 )
 
+func execGitCommand(program string, path string) int {
+	cmd := exec.Command(program, path)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	err := cmd.Run()
+
+	status := 0
+	if err != nil {
+		ee := err.(*exec.ExitError)
+		status = ee.Sys().(syscall.WaitStatus).ExitStatus()
+	}
+
+	return status
+}
+
 func gitUploadPack(arg string, uid string) {
 
 	client := client.NewClient("http://localhost:8888")
@@ -21,18 +38,13 @@ func gitUploadPack(arg string, uid string) {
 		os.Exit(-10)
 	}
 
-	cmd := exec.Command("git-upload-pack", path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
+	res := execGitCommand("git-upload-pack", path)
 
-	err = cmd.Run()
-
-	if err != nil {
-		ee := err.(*exec.ExitError)
-		os.Exit(ee.Sys().(syscall.WaitStatus).ExitStatus())
+	if res != 0 {
+		os.Exit(res)
 	}
 }
+
 
 func gitReceivePack(arg string, uid string) {
 
@@ -44,17 +56,10 @@ func gitReceivePack(arg string, uid string) {
 		os.Exit(-10)
 	}
 
-	fmt.Fprintf(os.Stderr, "[D] grp: %s", path)
-	cmd := exec.Command("git-receive-pack", path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
+	res := execGitCommand("git-receive-pack", path)
 
-	err = cmd.Run()
-
-	if err != nil {
-		ee := err.(*exec.ExitError)
-		os.Exit(ee.Sys().(syscall.WaitStatus).ExitStatus())
+	if res != 0 {
+		os.Exit(res)
 	}
 }
 
