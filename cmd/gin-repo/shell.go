@@ -45,7 +45,6 @@ func gitUploadPack(arg string, uid string) {
 	}
 }
 
-
 func gitReceivePack(arg string, uid string) {
 
 	client := client.NewClient("http://localhost:8888")

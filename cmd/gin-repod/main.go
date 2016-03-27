@@ -12,11 +12,11 @@ import (
 	"github.com/gorilla/mux"
 
 	. "github.com/G-Node/gin-repo/common"
+	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/ssh"
 	"github.com/G-Node/gin-repo/wire"
 	"path/filepath"
 	"strings"
-	"gopkg.in/libgit2/git2go.v23"
 )
 
 func getRepoDir() string {
@@ -135,7 +135,7 @@ func createRepo(w http.ResponseWriter, r *http.Request) {
 
 	path := translatePath(creat.Name, user)
 
-	_, err = git.InitRepository(path, true)
+	_, err = git.InitBareRepository(path)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -144,7 +144,6 @@ func createRepo(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 }
-
 
 func main() {
 	usage := `gin repo daemon.
