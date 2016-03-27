@@ -34,7 +34,7 @@ func gitUploadPack(arg string, uid string) {
 	path, err := client.RepoAccess(arg, uid, "pull")
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[E] repo access error: %v", err)
+		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
 		os.Exit(-10)
 	}
 
@@ -51,7 +51,7 @@ func gitReceivePack(arg string, uid string) {
 	path, err := client.RepoAccess(arg, uid, "push")
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[E] repo access error: %v", err)
+		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
 		os.Exit(-10)
 	}
 
@@ -100,7 +100,7 @@ func cmdShell(args map[string]interface{}) {
 		gitReceivePack(gitarg, uid)
 
 	default:
-		fmt.Fprintf(os.Stderr, "[E] unhandled command: %s", gitcmd)
+		fmt.Fprintf(os.Stderr, "[E] unhandled command: %s\n", gitcmd)
 		os.Exit(23)
 	}
 }
