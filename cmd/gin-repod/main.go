@@ -72,8 +72,21 @@ func repoAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//TODO: check access here
-
 	path := translatePath(query.Path, query.User)
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		w.WriteHeader(http.StatusNotFound)
+	} else if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	// path does exists, but is it a bare repo?
+	if !git.IsBareRepository(path) {
+		// what is the right status here?
+		//  for now we pretend the path doesnt exist
+		w.WriteHeader(http.StatusNotFound)
+	}
+
 	w.Write([]byte(path))
 }
 
