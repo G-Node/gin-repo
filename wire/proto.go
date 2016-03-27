@@ -7,6 +7,6 @@ type RepoAccessQuery struct {
 }
 
 type CreateRepo struct {
-	Name string
+	Name        string
 	Description string
 }
