@@ -2,12 +2,11 @@ FROM ubuntu:16.04
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update &&                                                            \
-    apt-get install -y --no-install-recommends                                   \
-                       gcc g++ libc6-dev make cmake pkg-config golang            \
-                       git openssh-server                                        \
-                       libssh2-1-dev libssl-dev libcurl4-openssl-dev libgit2-dev \
-                       python-pip python-setuptools                              \
+RUN apt-get update &&                                   \
+    apt-get install -y --no-install-recommends          \
+                       gcc g++ libc6-dev make golang    \
+                       git openssh-server               \
+                       python-pip python-setuptools     \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install supervisor
@@ -25,7 +24,6 @@ RUN adduser --system --home /data --shell /bin/sh --ingroup git --disabled-passw
 RUN passwd -d git
 
 # speed up things by pre-go getting dependencies
-RUN go get "gopkg.in/libgit2/git2go.v23"
 RUN go get "github.com/docopt/docopt-go"
 RUN go get "github.com/gorilla/mux"
 
