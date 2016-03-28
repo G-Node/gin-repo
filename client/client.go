@@ -14,20 +14,20 @@ import (
 
 type Client struct {
 	address string
+	web     *http.Client
 }
 
 func NewClient(address string) *Client {
-	return &Client{address: address}
+	return &Client{address: address, web: &http.Client{}}
 }
 
 func (client *Client) LookupUserByFingerprint(fingerprint string) (*User, error) {
-	web := &http.Client{}
 
 	params := url.Values{}
 	params.Add("key", fingerprint)
 	url := fmt.Sprintf("%s/intern/user/lookup?%s", client.address, params.Encode())
 
-	res, err := web.Get(url)
+	res, err := client.web.Get(url)
 	if err != nil {
 		return nil, err
 	} else if status := res.StatusCode; status != 200 {
@@ -50,7 +50,6 @@ func (client *Client) LookupUserByFingerprint(fingerprint string) (*User, error)
 }
 
 func (client *Client) RepoAccess(path string, uid string, method string) (string, error) {
-	web := &http.Client{}
 
 	query := wire.RepoAccessQuery{Path: path, User: uid, Method: method}
 
@@ -61,7 +60,7 @@ func (client *Client) RepoAccess(path string, uid string, method string) (string
 	}
 
 	url := fmt.Sprintf("%s/intern/repos/access", client.address)
-	res, err := web.Post(url, "application/json", bytes.NewReader(data))
+	res, err := client.web.Post(url, "application/json", bytes.NewReader(data))
 	if err != nil {
 		return "", err
 	} else if status := res.StatusCode; status != 200 {
