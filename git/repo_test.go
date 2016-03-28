@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestRepoInit(t *testing.T) {
+func TestRepoBasic(t *testing.T) {
 
 	const path = "test.git"
 	repo, err := InitBareRepository(path)
@@ -27,6 +27,7 @@ func TestRepoInit(t *testing.T) {
 
 	os.Setenv("GIT_DIR", path)
 	body, err := exec.Command("git", "rev-parse", "--is-bare-repository").Output()
+	os.Unsetenv("GIT_DIR")
 
 	if err != nil {
 		t.Fatalf("Expected to run git rev-parse, but failed with: %v", err)
@@ -36,6 +37,18 @@ func TestRepoInit(t *testing.T) {
 		t.Fatalf("Creating a proper git repository failed!")
 	}
 
+	ok := IsBareRepository(repo.Path)
+
+	if !ok {
+		t.Fatalf("Bare repo check that shouldn't fail, did fail! [%q]", repo.Path)
+	}
+
+	ok = IsBareRepository("/NONEXISTATNREPOHOPEFULLY")
+	if ok {
+		t.Fatalf("Bare repo check succeed for %q, but shouldn't!")
+	}
+
+	// Remove test directory again
 	err = exec.Command("rm", "-rf", repo.Path).Run()
 
 	if err != nil {
