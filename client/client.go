@@ -13,19 +13,19 @@ import (
 )
 
 type Client struct {
-	address string
+	Address string
 	web     *http.Client
 }
 
 func NewClient(address string) *Client {
-	return &Client{address: address, web: &http.Client{}}
+	return &Client{Address: address, web: &http.Client{}}
 }
 
 func (client *Client) LookupUserByFingerprint(fingerprint string) (*User, error) {
 
 	params := url.Values{}
 	params.Add("key", fingerprint)
-	url := fmt.Sprintf("%s/intern/user/lookup?%s", client.address, params.Encode())
+	url := fmt.Sprintf("%s/intern/user/lookup?%s", client.Address, params.Encode())
 
 	res, err := client.web.Get(url)
 	if err != nil {
@@ -59,7 +59,7 @@ func (client *Client) RepoAccess(path string, uid string, method string) (string
 		return "", err
 	}
 
-	url := fmt.Sprintf("%s/intern/repos/access", client.address)
+	url := fmt.Sprintf("%s/intern/repos/access", client.Address)
 	res, err := client.web.Post(url, "application/json", bytes.NewReader(data))
 	if err != nil {
 		return "", err
