@@ -72,12 +72,16 @@ func repoAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//TODO: check access here
+	log.Printf("[D] method: %s", query.Method)
+
 	path := translatePath(query.Path, query.User)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		w.WriteHeader(http.StatusNotFound)
+		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	// path does exists, but is it a bare repo?
@@ -85,6 +89,7 @@ func repoAccess(w http.ResponseWriter, r *http.Request) {
 		// what is the right status here?
 		//  for now we pretend the path doesnt exist
 		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 
 	w.Write([]byte(path))
