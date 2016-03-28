@@ -9,6 +9,7 @@ import (
 	"fmt"
 	. "github.com/G-Node/gin-repo/common"
 	"github.com/G-Node/gin-repo/wire"
+	"io"
 	"io/ioutil"
 )
 
@@ -21,13 +22,38 @@ func NewClient(address string) *Client {
 	return &Client{Address: address, web: &http.Client{}}
 }
 
+func (client *Client) Call(method string, url string, v interface{}) (*http.Response, error) {
+
+	var body io.Reader
+
+	if v != nil {
+		data, err := json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("client: json error: ")
+		}
+		body = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("client: request creation failed: %v", err)
+	}
+
+	if body != nil {
+		req.Header.Add("Content-Type", "application/json")
+	}
+
+	return client.web.Do(req)
+}
+
 func (client *Client) LookupUserByFingerprint(fingerprint string) (*User, error) {
 
 	params := url.Values{}
 	params.Add("key", fingerprint)
 	url := fmt.Sprintf("%s/intern/user/lookup?%s", client.Address, params.Encode())
 
-	res, err := client.web.Get(url)
+	res, err := client.Call("GET", url, nil)
+
 	if err != nil {
 		return nil, err
 	} else if status := res.StatusCode; status != 200 {
@@ -52,15 +78,9 @@ func (client *Client) LookupUserByFingerprint(fingerprint string) (*User, error)
 func (client *Client) RepoAccess(path string, uid string, method string) (string, error) {
 
 	query := wire.RepoAccessQuery{Path: path, User: uid, Method: method}
-
-	data, err := json.Marshal(&query)
-
-	if err != nil {
-		return "", err
-	}
-
 	url := fmt.Sprintf("%s/intern/repos/access", client.Address)
-	res, err := client.web.Post(url, "application/json", bytes.NewReader(data))
+
+	res, err := client.Call("POST", url, &query)
 	if err != nil {
 		return "", err
 	} else if status := res.StatusCode; status != 200 {
