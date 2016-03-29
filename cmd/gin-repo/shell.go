@@ -28,39 +28,32 @@ func execGitCommand(program string, path string) int {
 	return status
 }
 
-func gitUploadPack(arg string, uid string) {
+func gitUploadPack(arg string, uid string) int {
 
 	client := client.NewClient("http://localhost:8888")
 	path, err := client.RepoAccess(arg, uid, "pull")
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
-		os.Exit(-10)
+		return -10
 	}
 
-	res := execGitCommand("git-upload-pack", path)
-
-	if res != 0 {
-		os.Exit(res)
-	}
+	return execGitCommand("git-upload-pack", path)
 }
 
-func gitReceivePack(arg string, uid string) {
+func gitReceivePack(arg string, uid string) int {
 
 	client := client.NewClient("http://localhost:8888")
 	path, err := client.RepoAccess(arg, uid, "push")
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
-		os.Exit(-10)
+		return -10
 	}
 
-	res := execGitCommand("git-receive-pack", path)
-
-	if res != 0 {
-		os.Exit(res)
-	}
+	return execGitCommand("git-receive-pack", path)
 }
+
 
 func splitarg(arg string, out ...*string) bool {
 	comps := strings.Split(arg, " ")
@@ -92,15 +85,19 @@ func cmdShell(args map[string]interface{}) {
 	fmt.Fprintf(os.Stderr, "uid: %s\n", uid)
 	fmt.Fprintf(os.Stderr, "git: %s [%s]\n", gitcmd, gitarg)
 
+	res := 0
 	switch gitcmd {
 	case "git-upload-pack":
-		gitUploadPack(gitarg, uid)
+		res = gitUploadPack(gitarg, uid)
 
 	case "git-receive-pack":
-		gitReceivePack(gitarg, uid)
+		res = gitReceivePack(gitarg, uid)
 
 	default:
 		fmt.Fprintf(os.Stderr, "[E] unhandled command: %s\n", gitcmd)
-		os.Exit(23)
+		res = 23
 	}
+
+	os.Exit(res)
+
 }
