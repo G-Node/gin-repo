@@ -41,6 +41,19 @@ func gitUploadPack(arg string, uid string) int {
 	return execGitCommand("git-upload-pack", path)
 }
 
+func gitUploadArchive(arg string, uid string) int {
+
+	client := client.NewClient("http://localhost:8888")
+	path, err := client.RepoAccess(arg, uid, "pull")
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
+		return -10
+	}
+
+	return execGitCommand("git-upload-archive", path)
+}
+
 func gitReceivePack(arg string, uid string) int {
 
 	client := client.NewClient("http://localhost:8888")
@@ -53,7 +66,6 @@ func gitReceivePack(arg string, uid string) int {
 
 	return execGitCommand("git-receive-pack", path)
 }
-
 
 func splitarg(arg string, out ...*string) bool {
 	comps := strings.Split(arg, " ")
@@ -89,6 +101,9 @@ func cmdShell(args map[string]interface{}) {
 	switch gitcmd {
 	case "git-upload-pack":
 		res = gitUploadPack(gitarg, uid)
+
+	case "git-upload-archive":
+		res = gitUploadArchive(gitarg, uid)
 
 	case "git-receive-pack":
 		res = gitReceivePack(gitarg, uid)
