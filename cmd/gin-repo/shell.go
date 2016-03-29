@@ -31,7 +31,7 @@ func execGitCommand(program string, path string) int {
 func gitUploadPack(arg string, uid string) int {
 
 	client := client.NewClient("http://localhost:8888")
-	path, err := client.RepoAccess(arg, uid, "pull")
+	path, _, err := client.RepoAccess(arg, uid)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
@@ -44,7 +44,7 @@ func gitUploadPack(arg string, uid string) int {
 func gitUploadArchive(arg string, uid string) int {
 
 	client := client.NewClient("http://localhost:8888")
-	path, err := client.RepoAccess(arg, uid, "pull")
+	path, _, err := client.RepoAccess(arg, uid)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
@@ -57,11 +57,14 @@ func gitUploadArchive(arg string, uid string) int {
 func gitReceivePack(arg string, uid string) int {
 
 	client := client.NewClient("http://localhost:8888")
-	path, err := client.RepoAccess(arg, uid, "push")
+	path, push, err := client.RepoAccess(arg, uid)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
 		return -10
+	} else if !push {
+		fmt.Fprintf(os.Stderr, "[E] repository is read only!\n")
+		return -11
 	}
 
 	return execGitCommand("git-receive-pack", path)

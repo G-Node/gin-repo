@@ -65,15 +65,13 @@ func repoAccess(w http.ResponseWriter, r *http.Request) {
 	var query wire.RepoAccessQuery
 	err := decoder.Decode(&query)
 
-	if err != nil || query.Path == "" || query.User == "" || query.Method == "" {
+	if err != nil || query.Path == "" || query.User == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(os.Stderr, "Error precessing request: %v", err)
 		return
 	}
 
 	//TODO: check access here
-	log.Printf("[D] method: %s", query.Method)
-
 	path := translatePath(query.Path, query.User)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -92,7 +90,15 @@ func repoAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(path))
+	access := wire.RepoAccessInfo{Path: path, Push: true}
+
+	data, err := json.Marshal(access)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
 }
 
 func lookupUser(w http.ResponseWriter, r *http.Request) {

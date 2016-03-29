@@ -75,24 +75,29 @@ func (client *Client) LookupUserByFingerprint(fingerprint string) (*User, error)
 	return &user, nil
 }
 
-func (client *Client) RepoAccess(path string, uid string, method string) (string, error) {
+func (client *Client) RepoAccess(path string, uid string) (string, bool, error) {
 
-	query := wire.RepoAccessQuery{Path: path, User: uid, Method: method}
+	query := wire.RepoAccessQuery{Path: path, User: uid}
 	url := fmt.Sprintf("%s/intern/repos/access", client.Address)
 
 	res, err := client.Call("POST", url, &query)
 	if err != nil {
-		return "", err
+		return "", false, err
 	} else if status := res.StatusCode; status != 200 {
-		return "", fmt.Errorf("Server returned non-OK status: %d", status)
+		return "", false, fmt.Errorf("Server returned non-OK status: %d", status)
 	}
 
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 
-	return string(body), nil
+	var info wire.RepoAccessInfo
+	if err = json.Unmarshal(body, &info); err != nil {
+		return "", false, err
+	}
+
+	return info.Path, info.Push, nil
 }
