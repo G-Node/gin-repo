@@ -10,8 +10,8 @@ import (
 	"github.com/G-Node/gin-repo/client"
 )
 
-func execGitCommand(program string, path string) int {
-	cmd := exec.Command(program, path)
+func execGitCommand(name string, args ...string) int {
+	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
