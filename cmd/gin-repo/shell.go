@@ -70,26 +70,15 @@ func gitReceivePack(arg string, uid string) int {
 	return execGitCommand("git-receive-pack", path)
 }
 
-func splitarg(arg string, out ...*string) bool {
-	comps := strings.Split(arg, " ")
-
-	if len(comps) != len(out) {
-		return false
-	}
-
-	for i, str := range comps {
-		*out[i] = str
-	}
-
-	return true
-}
-
 func cmdShell(args map[string]interface{}) {
 	log.SetOutput(os.Stderr)
 
-	var gitcmd, gitarg string
-	if ok := splitarg(os.Getenv("SSH_ORIGINAL_COMMAND"), &gitcmd, &gitarg); !ok {
-		log.Fatal("[E] :( (no shell access allowed)")
+	argv := splitarg(os.Getenv("SSH_ORIGINAL_COMMAND"))
+	cmd := head(argv)
+
+	if cmd == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: No shell access allowed.")
+		return
 	}
 
 	if _, ok := args["<uid>"]; !ok {
@@ -98,21 +87,21 @@ func cmdShell(args map[string]interface{}) {
 
 	uid := args["<uid>"].(string)
 	fmt.Fprintf(os.Stderr, "uid: %s\n", uid)
-	fmt.Fprintf(os.Stderr, "git: %s [%s]\n", gitcmd, gitarg)
+	fmt.Fprintf(os.Stderr, "cmd: %s %v\n", cmd, argv[1:])
 
 	res := 0
-	switch gitcmd {
+	switch cmd {
 	case "git-upload-pack":
-		res = gitUploadPack(gitarg, uid)
+		res = gitUploadPack(strings.Join(argv[1:], " "), uid)
 
 	case "git-upload-archive":
-		res = gitUploadArchive(gitarg, uid)
+		res = gitUploadArchive(strings.Join(argv[1:], " "), uid)
 
 	case "git-receive-pack":
-		res = gitReceivePack(gitarg, uid)
+		res = gitReceivePack(strings.Join(argv[1:], " "), uid)
 
 	default:
-		fmt.Fprintf(os.Stderr, "[E] unhandled command: %s\n", gitcmd)
+		fmt.Fprintf(os.Stderr, "[E] unhandled command: %s\n", cmd)
 		res = 23
 	}
 
