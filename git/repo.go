@@ -53,3 +53,34 @@ func IsBareRepository(path string) bool {
 	status := strings.Trim(string(body), "\n ")
 	return status == "true"
 }
+
+func OpenRepository(path string) (*Repository, error) {
+
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("git: could not determine absolute path")
+	}
+
+	if !IsBareRepository(path) {
+		return nil, fmt.Errorf("git: not a bare repository")
+	}
+
+	return &Repository{Path: path}, nil
+}
+
+func (repo *Repository) HasAnnex() bool {
+	d := filepath.Join(repo.Path, "annex")
+	s, err := os.Stat(d)
+	return err == nil && s.IsDir()
+}
+
+func (repo *Repository) InitAnnex() error {
+	cmd := exec.Command("git", fmt.Sprintf("--git-dir=%s", repo.Path), "annex", "init", "gin")
+	body, err := cmd.Output()
+
+	if err != nil {
+		return fmt.Errorf("git: init annex failed: %q", string(body))
+	}
+
+	return nil
+}
