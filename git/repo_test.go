@@ -41,6 +41,16 @@ func TestRepoBasic(t *testing.T) {
 		t.Fatalf("Bare repo check that shouldn't fail, did fail! [%q]", repo.Path)
 	}
 
+	desc := "cooles repo!"
+	err = repo.WriteDescription(desc)
+	if err != nil {
+		t.Fatalf("Could not write repo description: %v", err)
+	}
+
+	if ddisk := repo.ReadDescription(); ddisk != desc {
+		t.Fatalf("Reop descriptions not as expected: got %q, wanted %q", desc, ddisk)
+	}
+
 	ok = IsBareRepository("/NONEXISTATNREPOHOPEFULLY")
 	if ok {
 		t.Fatalf("Bare repo check succeed for %q, but shouldn't!")

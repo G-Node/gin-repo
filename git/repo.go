@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,6 +55,24 @@ func OpenRepository(path string) (*Repository, error) {
 	}
 
 	return &Repository{Path: path}, nil
+}
+
+func (repo *Repository) ReadDescription() string {
+	path := filepath.Join(repo.Path, "description")
+
+	dat, err := ioutil.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+
+	return string(dat)
+}
+
+func (repo *Repository) WriteDescription(description string) error {
+	path := filepath.Join(repo.Path, "description")
+
+	// not atomic, fine for now
+	return ioutil.WriteFile(path, []byte(description), 0666)
 }
 
 func (repo *Repository) HasAnnex() bool {
