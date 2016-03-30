@@ -14,3 +14,8 @@ type CreateRepo struct {
 	Name        string
 	Description string
 }
+
+type Repo struct {
+	Name        string
+	Description string
+}

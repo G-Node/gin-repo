@@ -169,7 +169,18 @@ func createRepo(w http.ResponseWriter, r *http.Request) {
 	// ignore error, because we created the repo
 	//  which is more important
 	repo.WriteDescription(creat.Description)
+
+	wr := wire.Repo{Name: creat.Name, Description: repo.ReadDescription()}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+
+	js := json.NewEncoder(w)
+	err = js.Encode(wr)
+
+	if err != nil {
+		log.Printf("Error while encoding, status already sent. oh oh.")
+	}
 }
 
 func main() {
