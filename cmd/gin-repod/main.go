@@ -159,13 +159,16 @@ func createRepo(w http.ResponseWriter, r *http.Request) {
 
 	path := translatePath(creat.Name, user)
 
-	_, err = git.InitBareRepository(path)
+	repo, err := git.InitBareRepository(path)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
 
+	// ignore error, because we created the repo
+	//  which is more important
+	repo.WriteDescription(creat.Description)
 	w.WriteHeader(http.StatusCreated)
 }
 
