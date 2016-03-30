@@ -11,7 +11,18 @@ import (
 
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/wire"
+	"regexp"
 )
+
+var nameChecker *regexp.Regexp
+
+func init() {
+	nameChecker = regexp.MustCompile("^[a-zA-Z0-9-_.]{3,}$")
+}
+
+func checkName(name string) bool {
+	return nameChecker.MatchString(name)
+}
 
 func createRepo(w http.ResponseWriter, r *http.Request) {
 	log.Printf("createRepo: %s @ %s", r.Method, r.URL.String())
@@ -28,9 +39,11 @@ func createRepo(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(os.Stderr, "Error precessing request: name missing")
 		return
+	} else if !checkName(creat.Name) {
+		http.Error(w, "Invalid repository name", http.StatusBadRequest)
+		fmt.Fprintf(os.Stderr, "Error precessing request: invalid name: %q", creat.Name)
+		return
 	}
-
-	//TODO: check name for sanity
 
 	vars := mux.Vars(r)
 	user := vars["user"]
