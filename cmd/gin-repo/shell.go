@@ -18,13 +18,15 @@ func execGitCommand(program string, path string) int {
 
 	err := cmd.Run()
 
-	status := 0
-	if err != nil {
-		ee := err.(*exec.ExitError)
-		status = ee.Sys().(syscall.WaitStatus).ExitStatus()
+	if err == nil {
+		return 0
 	}
 
-	return status
+	if t, ok := err.(*exec.ExitError); ok {
+		return t.Sys().(syscall.WaitStatus).ExitStatus()
+	}
+
+	return -1
 }
 
 func gitCommand(args []string, push bool, uid string) int {
