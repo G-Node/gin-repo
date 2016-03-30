@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 
 	"github.com/G-Node/gin-repo/client"
@@ -28,46 +27,25 @@ func execGitCommand(program string, path string) int {
 	return status
 }
 
-func gitUploadPack(arg string, uid string) int {
+func gitCommand(args []string, push bool, uid string) int {
 
-	client := client.NewClient("http://localhost:8888")
-	path, _, err := client.RepoAccess(arg, uid)
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
-		return -10
+	if len(args) < 2 {
+		fmt.Fprintf(os.Stderr, "ERROR: wrong arguments to %q", args[0])
+		return -2
 	}
 
-	return execGitCommand("git-upload-pack", path)
-}
-
-func gitUploadArchive(arg string, uid string) int {
-
 	client := client.NewClient("http://localhost:8888")
-	path, _, err := client.RepoAccess(arg, uid)
+	path, pok, err := client.RepoAccess(args[1], uid)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
 		return -10
-	}
-
-	return execGitCommand("git-upload-archive", path)
-}
-
-func gitReceivePack(arg string, uid string) int {
-
-	client := client.NewClient("http://localhost:8888")
-	path, push, err := client.RepoAccess(arg, uid)
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[E] repo access error: %v\n", err)
-		return -10
-	} else if !push {
+	} else if push && !pok {
 		fmt.Fprintf(os.Stderr, "[E] repository is read only!\n")
 		return -11
 	}
 
-	return execGitCommand("git-receive-pack", path)
+	return execGitCommand(args[0], path)
 }
 
 func cmdShell(args map[string]interface{}) {
@@ -92,13 +70,12 @@ func cmdShell(args map[string]interface{}) {
 	res := 0
 	switch cmd {
 	case "git-upload-pack":
-		res = gitUploadPack(strings.Join(argv[1:], " "), uid)
-
+		fallthrough
 	case "git-upload-archive":
-		res = gitUploadArchive(strings.Join(argv[1:], " "), uid)
+		res = gitCommand(argv, false, uid)
 
 	case "git-receive-pack":
-		res = gitReceivePack(strings.Join(argv[1:], " "), uid)
+		res = gitCommand(argv, true, uid)
 
 	default:
 		fmt.Fprintf(os.Stderr, "[E] unhandled command: %s\n", cmd)
