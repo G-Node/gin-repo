@@ -1,29 +1,37 @@
 package main
 
-import "unicode"
+import (
+	"bytes"
+	"unicode"
+)
 
 func splitarg(args string) []string {
 	var out []string
 	q := rune(0)
-	s := 0
-	for i, c := range args {
+
+	buf := bytes.NewBufferString("")
+	for _, c := range args {
 		switch {
 		case q != rune(0):
 			if c == q {
 				q = rune(0)
+			} else {
+				buf.WriteRune(c)
 			}
 		case unicode.In(c, unicode.Quotation_Mark):
 			q = c
 		case unicode.IsSpace(c):
-			if sub := args[s:i]; sub != "" {
-				out = append(out, args[s:i])
+			if buf.Len() > 0 {
+				out = append(out, buf.String())
+				buf.Reset()
 			}
-			s = i + 1
+		default:
+			buf.WriteRune(c)
 		}
 	}
 
-	if sub := args[s:]; sub != "" {
-		out = append(out, args[s:])
+	if buf.Len() > 0 {
+		out = append(out, buf.String())
 	}
 
 	return out

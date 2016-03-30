@@ -14,13 +14,15 @@ var splitargtest = []struct {
 	{"  ", nil},
 	{"x", []string{"x"}},
 	{"x x", []string{"x", "x"}},
-	{"'x' 'x'", []string{"'x'", "'x'"}},
-	{"'x'  'x'", []string{"'x'", "'x'"}},
-	{"' x ' 'x'", []string{"' x '", "'x'"}},
-	{" ' x ' 'x'", []string{"' x '", "'x'"}},
-	{" ' x ' 'x' ", []string{"' x '", "'x'"}},
-	{" ' x ' 'x' x", []string{"' x '", "'x'", "x"}},
-	{" \" x \" 'x' x", []string{"\" x \"", "'x'", "x"}},
+	{"'x' 'x'", []string{"x", "x"}},
+	{"'x'  'x'", []string{"x", "x"}},
+	{"' x ' 'x'", []string{" x ", "x"}},
+	{" ' x ' 'x'", []string{" x ", "x"}},
+	{" ' x ' 'x' ", []string{" x ", "x"}},
+	{" ' x ' 'x' x", []string{" x ", "x", "x"}},
+	{" \" x \" 'x' x", []string{" x ", "x", "x"}},
+	{" \" x \" 'x' x", []string{" x ", "x", "x"}},
+	{" \" x \"x 'x'x xx", []string{" x x", "xx", "xx"}},
 }
 
 func TestSplitarg(t *testing.T) {
