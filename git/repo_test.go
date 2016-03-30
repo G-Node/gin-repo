@@ -1,7 +1,6 @@
 package git
 
 import (
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -25,9 +24,8 @@ func TestRepoBasic(t *testing.T) {
 		t.Fatalf("No absolute path in repo.Path, but: %q", repo.Path)
 	}
 
-	os.Setenv("GIT_DIR", path)
-	body, err := exec.Command("git", "rev-parse", "--is-bare-repository").Output()
-	os.Unsetenv("GIT_DIR")
+	gd := "--git-dir=" + repo.Path
+	body, err := exec.Command("git", gd, "rev-parse", "--is-bare-repository").Output()
 
 	if err != nil {
 		t.Fatalf("Expected to run git rev-parse, but failed with: %v", err)
