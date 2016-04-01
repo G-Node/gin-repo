@@ -31,7 +31,23 @@ func (s *Server) log(lvl LogLevel, msg string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, msg+"\n", args...)
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+type statusResponseWriter struct {
+	http.ResponseWriter
+	status        int
+	headerWritten bool
+}
+
+func (w *statusResponseWriter) WriteHeader(status int) {
+	if !w.headerWritten {
+		w.status = status
+	}
+
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (s *Server) ServeHTTP(original http.ResponseWriter, req *http.Request) {
+
+	w := &statusResponseWriter{original, 200, false}
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -41,10 +57,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			n := runtime.Stack(buf, false)
 			st := string(buf[:n])
 
-			s.log(ERROR, "'%s %s' 500, Recovered from panic!", req.Method, req.URL.Path)
-			fmt.Fprintf(os.Stderr, "Panic on reqest: '%s %s': %q", req.Method, req.URL.Path, st)
+			s.log(ERROR, "'%s %s' %d, Recovered from panic!", req.Method, req.URL.Path, w.status)
+			fmt.Fprintf(os.Stderr, "Panic on reqest: '%s %s': %s", req.Method, req.URL.Path, st)
 		} else {
-			s.log(INFO, "'%s %s'", req.Method, req.URL.Path)
+			s.log(INFO, "'%s %s' %d", req.Method, req.URL.Path, w.status)
 		}
 	}()
 
