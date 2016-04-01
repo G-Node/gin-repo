@@ -31,14 +31,13 @@ func execGitCommand(name string, args ...string) int {
 	return -1
 }
 
-func gitCommand(args []string, push bool, uid string) int {
+func gitCommand(client *client.Client, args []string, push bool, uid string) int {
 
 	if len(args) < 2 {
 		fmt.Fprintf(os.Stderr, "ERROR: wrong arguments to %q", args[0])
 		return -2
 	}
 
-	client := client.NewClient("http://localhost:8888")
 	path, pok, err := client.RepoAccess(args[1], uid)
 
 	if err != nil {
@@ -52,14 +51,13 @@ func gitCommand(args []string, push bool, uid string) int {
 	return execGitCommand(args[0], path)
 }
 
-func gitAnnex(args []string, uid string) int {
+func gitAnnex(client *client.Client, args []string, uid string) int {
 
 	if len(args) < 3 {
 		fmt.Fprintf(os.Stderr, "ERROR: wrong arguments to %q", args[0])
 		return -2
 	}
 
-	client := client.NewClient("http://localhost:8888")
 	path, pok, err := client.RepoAccess(args[2], uid)
 
 	if err != nil {
@@ -117,18 +115,20 @@ func cmdShell(args map[string]interface{}) {
 	fmt.Fprintf(os.Stderr, "uid: %s\n", uid)
 	fmt.Fprintf(os.Stderr, "cmd: %s %v\n", cmd, argv[1:])
 
+	client := client.NewClient("http://localhost:8888")
+
 	res := 0
 	switch cmd {
 	case "git-upload-pack":
 		fallthrough
 	case "git-upload-archive":
-		res = gitCommand(argv, false, uid)
+		res = gitCommand(client, argv, false, uid)
 
 	case "git-receive-pack":
-		res = gitCommand(argv, true, uid)
+		res = gitCommand(client, argv, true, uid)
 
 	case "git-annex-shell":
-		res = gitAnnex(argv, uid)
+		res = gitAnnex(client, argv, uid)
 
 	default:
 		fmt.Fprintf(os.Stderr, "[E] unhandled command: %s\n", cmd)
