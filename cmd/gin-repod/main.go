@@ -1,20 +1,26 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
+	"io/ioutil"
 	"net/http"
-
-	"github.com/docopt/docopt-go"
-
-	"github.com/gorilla/mux"
 	"os"
+	"path"
+	"path/filepath"
 	"runtime"
+	"strings"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/docopt/docopt-go"
+	"github.com/gorilla/mux"
 )
 
 type Server struct {
 	http.Server
-
 	Root *mux.Router
+
+	srvKey []byte
 }
 
 type LogLevel int
@@ -64,7 +70,65 @@ func (s *Server) ServeHTTP(original http.ResponseWriter, req *http.Request) {
 		}
 	}()
 
+	// this should most like be done differently, in a middleware maybe
+	//  good enough for now though
+	if strings.HasPrefix(path.Clean(req.URL.Path), "/intern") {
+		token, err := s.getAuthToken(req)
+		if err != nil {
+			s.log(WARN, "Got invalid token: %v", err)
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		if role, ok := token.Claims["role"].(string); !ok || role != "service" {
+			s.log(WARN, "Got token without or non-service role")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+	}
+
 	s.Root.ServeHTTP(w, req)
+}
+
+func (s *Server) getAuthToken(r *http.Request) (*jwt.Token, error) {
+	auth := r.Header.Get("Authorization")
+
+	if auth == "" {
+		return nil, fmt.Errorf("No auth header")
+	} else if !strings.HasPrefix(auth, "Bearer ") {
+		return nil, fmt.Errorf("Invalid auth type: %q", auth)
+	}
+
+	return jwt.Parse(strings.Trim(auth[6:], " "), func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Wrong signing method: %v", token.Header["alg"])
+		}
+		return s.srvKey, nil
+	})
+}
+
+func (s *Server) SetupServiceSecret() error {
+	s.srvKey = make([]byte, 23)
+	_, err := rand.Read(s.srvKey)
+
+	if err != nil {
+		s.log(PANIC, "Could not obtain random bytes for secret: %v", err)
+		os.Exit(10)
+	}
+
+	path := "gin.secret"
+	err = ioutil.WriteFile(path, s.srvKey, 0600)
+	if err != nil {
+		s.log(PANIC, "Could not write to gin.secret: %v", err)
+		os.Exit(10)
+	}
+
+	if abspath, err := filepath.Abs(path); err == nil {
+		path = abspath
+	}
+
+	s.log(DEBUG, "Wrote shared secret to %q", path)
+	return nil
 }
 
 func (s *Server) ListenAndServe() error {
@@ -105,5 +169,6 @@ Options:
 
 	r.HandleFunc("/users/{user}/repos", createRepo).Methods("POST")
 
+	s.SetupServiceSecret()
 	s.ListenAndServe()
 }
