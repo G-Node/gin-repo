@@ -26,6 +26,7 @@ RUN passwd -d git
 # speed up things by pre-go getting dependencies
 RUN go get "github.com/docopt/docopt-go"
 RUN go get "github.com/gorilla/mux"
+RUN go get "github.com/dgrijalva/jwt-go"
 
 # make gin-repo available in $PATH for ssh connections
 RUN ln -sf $GOPATH/bin/gin-repo /usr/bin/gin-repo
