@@ -32,6 +32,10 @@ func cmdKeysList(args map[string]interface{}, keys map[string]ssh.Key) {
 func cmdKeysSSHd(fingerprint string, keys map[string]ssh.Key) {
 	client := client.NewClient("http://localhost:8888")
 
+	if token, err := makeServiceToken(); err == nil {
+		client.AuthToken = token
+	}
+
 	user, err := client.LookupUserByFingerprint(fingerprint)
 
 	if err != nil {
