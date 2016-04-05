@@ -14,8 +14,9 @@ import (
 )
 
 type Client struct {
-	Address string
-	web     *http.Client
+	Address   string
+	AuthToken string
+	web       *http.Client
 }
 
 func NewClient(address string) *Client {
@@ -41,6 +42,10 @@ func (client *Client) Call(method string, url string, v interface{}) (*http.Resp
 
 	if body != nil {
 		req.Header.Add("Content-Type", "application/json")
+	}
+
+	if token := client.AuthToken; token != "" {
+		req.Header.Add("Authorization", "Bearer "+token)
 	}
 
 	return client.web.Do(req)
