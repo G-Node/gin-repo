@@ -69,38 +69,43 @@ func catFile(repo *git.Repository, idstr string) {
 		os.Exit(1)
 	}
 
+	printObject(obj, "")
+}
+
+func printObject(obj git.Object, prefix string) {
+
 	switch obj := obj.(type) {
 	case *git.Commit:
 		fmt.Printf("Commit [%v]\n", obj.Size())
-		fmt.Printf(" └┬─ tree:      %s\n", obj.Tree)
-		fmt.Printf("  ├─ parent:    %s\n", obj.Parent)
-		fmt.Printf("  ├─ author:    %s\n", obj.Author)
-		fmt.Printf("  ├─ committer: %s\n", obj.Committer)
-		fmt.Printf("  └─ message:   [%.40s...]\n", obj.Message)
+		fmt.Printf("%s └┬─ tree:      %s\n", prefix, obj.Tree)
+		fmt.Printf("%s  ├─ parent:    %s\n", prefix, obj.Parent)
+		fmt.Printf("%s  ├─ author:    %s\n", prefix, obj.Author)
+		fmt.Printf("%s  ├─ committer: %s\n", prefix, obj.Committer)
+		fmt.Printf("%s  └─ message:   [%.40s...]\n", prefix, obj.Message)
 	case *git.Tree:
 		fmt.Printf("Tree [%v]\n", obj.Size())
 
 		for obj.Next() {
 			entry := obj.Entry()
-			fmt.Printf(" ├─ %06o %s %s\n", entry.Mode, entry.ID, entry.Name)
+			fmt.Printf("%s ├─ %08o %-7s %s %s\n", prefix, entry.Mode, entry.Type, entry.ID, entry.Name)
 		}
 
 		if err := obj.Err(); err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: %v", err)
+			fmt.Fprintf(os.Stderr, "%sERROR: %v", prefix, err)
 		}
 	case *git.Blob:
 		fmt.Printf("Blob [%v]\n", obj.Size())
 		_, err := io.Copy(os.Stdout, obj)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: %v", err)
+			fmt.Fprintf(os.Stderr, "%sERROR: %v", prefix, err)
 		}
 
 	case *git.Tag:
 		fmt.Printf("Tag [%v]\n", obj.Size())
-		fmt.Printf(" └┬─ object:    %s\n", obj.Object)
-		fmt.Printf("  ├─ type:      %v\n", obj.ObjType)
-		fmt.Printf("  ├─ tagger:    %s\n", obj.Tagger)
-		fmt.Printf("  └─ message:   [%.40s...]\n", obj.Message)
+		fmt.Printf("%s └┬─ object:    %s\n", prefix, obj.Object)
+		fmt.Printf("%s  ├─ type:      %v\n", prefix, obj.ObjType)
+		fmt.Printf("%s  ├─ tagger:    %s\n", prefix, obj.Tagger)
+		fmt.Printf("%s  └─ message:   [%.40s...]\n", prefix, obj.Message)
 	}
 }
 
@@ -159,12 +164,8 @@ func showPack(repo *git.Repository, packid string) {
 			switch c := obj.(type) {
 
 			case *git.Commit:
-				fmt.Printf("%s └─Commit [%d, %d, %v]\n", pf, k, off, obj.Size())
-				fmt.Printf("%s   └┬─ tree:      %s\n", pf, c.Tree)
-				fmt.Printf("%s    ├─ parent:    %s\n", pf, c.Parent)
-				fmt.Printf("%s    ├─ author:    %s\n", pf, c.Author)
-				fmt.Printf("%s    └─ committer: %s\n", pf, c.Committer)
-
+				fmt.Printf("%s └─", pf)
+				printObject(obj, pf+"  ")
 			case *git.DeltaOfs:
 				fmt.Printf("%s └─Delta OFS [%d, %d, %v]\n", pf, k, off, obj.Size())
 				fmt.Printf("%s   └─ offset: %v\n", pf, c.Offset)
@@ -174,7 +175,7 @@ func showPack(repo *git.Repository, packid string) {
 				fmt.Printf("%s   └─ ref: %v\n", pf, c.Base)
 
 			default:
-				fmt.Printf("%s └─ %d, %d, %d [%d]\n", pf, k, off, obj.Type(), obj.Size())
+				fmt.Printf("%s └─ %s %d, %d, [%d]\n", pf, obj.Type(), k, off, obj.Size())
 
 			}
 		}
