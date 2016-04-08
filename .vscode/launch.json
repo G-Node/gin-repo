@@ -1,0 +1,14 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Launch",
+			"type": "go",
+			"request": "launch",
+			"mode": "exec",
+			"program": "${workspaceRoot}/cmd/gin-git/gin-git",
+			"env": {},
+			"args": ["cat-file feb8bd4671d76c175e8b785d4c3f17aae61317a0"]
+		}
+	]
+}
