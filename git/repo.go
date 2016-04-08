@@ -91,3 +91,19 @@ func (repo *Repository) InitAnnex() error {
 
 	return nil
 }
+
+func (repo *Repository) OpenObject(id SHA1) (Object, error) {
+	idstr := id.String()
+	opath := filepath.Join(repo.Path, "objects", idstr[:2], idstr[2:])
+
+	obj, err := OpenObject(opath)
+
+	if err == nil {
+		return obj, nil
+	} else if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	// TODO: packfile handling
+	return nil, err
+}
