@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 // Resources:
@@ -49,51 +50,14 @@ type PackFile struct {
 	ObjCount uint32
 }
 
-type Pack struct {
-	Index *PackIndex
-	Data  *PackFile
-}
-
-func OpenPack(path string) (*Pack, error) {
-	pathpack := path + ".pack"
-	pathidx := path + ".idx"
-
-	idx, err := PackIndexOpen(pathidx)
-	if err != nil {
-		return nil, fmt.Errorf("git: error opening pack index: %v", err)
-	}
-
-	data, err := OpenPackFile(pathpack)
-	if err != nil {
-		idx.Close()
-		return nil, fmt.Errorf("git: error opening pack data: %v", err)
-	}
-
-	return &Pack{idx, data}, nil
-}
-
-func (p *Pack) Close() error {
-
-	err := p.Data.Close()
-	if err != nil {
-		p.Index.Close()
-		return err
-	}
-
-	return p.Index.Close()
-}
-
-func (p *Pack) ObjectCount() uint32 {
-	return p.Index.FO[255]
-}
-
-func (p *Pack) GetOID(pos int) (SHA1, error) {
-	var sha SHA1
-	err := p.Index.ReadSHA1(&sha, pos)
-	return sha, err
-}
-
+//PackIndexOpen opens the git pack file with the given
+//path. The ".idx" if missing will be appended.
 func PackIndexOpen(path string) (*PackIndex, error) {
+
+	if !strings.HasSuffix(path, ".idx") {
+		path += ".idx"
+	}
+
 	fd, err := os.Open(path)
 
 	if err != nil {
@@ -137,7 +101,7 @@ func PackIndexOpen(path string) (*PackIndex, error) {
 
 func (pi *PackIndex) ReadSHA1(chksum *SHA1, pos int) error {
 	if version := pi.Version; version != 2 {
-		return fmt.Errorf("git: v%d version incomplete", version)
+		return fmt.Errorf("git: v%d version support incomplete", version)
 	}
 
 	start := pi.shaBase

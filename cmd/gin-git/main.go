@@ -120,7 +120,14 @@ func showPack(repo *git.Repository, packid string) {
 	}
 
 	path := filepath.Join(repo.Path, "objects", "pack", packid)
-	pack, err := git.OpenPack(path)
+	idx, err := git.PackIndexOpen(path + ".idx")
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	data, err := git.OpenPackFile(path + ".pack")
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -136,7 +143,7 @@ func showPack(repo *git.Repository, packid string) {
 
 		var oid git.SHA1
 
-		s, e := pack.Index.FO.Bounds(i)
+		s, e := idx.FO.Bounds(i)
 		for k := s; k < e; k++ {
 			lead := "├─"
 			pf := prefix + " │"
@@ -146,7 +153,7 @@ func showPack(repo *git.Repository, packid string) {
 			}
 
 			fmt.Printf("%s %s", prefix, lead)
-			err := pack.Index.ReadSHA1(&oid, k)
+			err := idx.ReadSHA1(&oid, k)
 			if err != nil {
 				fmt.Printf(" ERROR: %v\n", err)
 				continue
@@ -154,13 +161,13 @@ func showPack(repo *git.Repository, packid string) {
 
 			fmt.Printf("%s\n", oid)
 
-			off, err := pack.Index.ReadOffset(k)
+			off, err := idx.ReadOffset(k)
 			if err != nil {
 				fmt.Printf(" ERROR: %v\n", err)
 				continue
 			}
 
-			obj, err := pack.Data.AsObject(off)
+			obj, err := data.AsObject(off)
 			if err != nil {
 				fmt.Printf(" ERROR: %v\n", err)
 				continue
