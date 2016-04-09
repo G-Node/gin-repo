@@ -104,6 +104,44 @@ func (repo *Repository) OpenObject(id SHA1) (Object, error) {
 		return nil, err
 	}
 
-	// TODO: packfile handling
-	return nil, err
+	indicies := repo.loadPackIndices()
+
+	for _, f := range indicies {
+
+		idx, err := PackIndexOpen(f)
+		if err != nil {
+			continue
+		}
+
+		pos, err := idx.FindSHA1(id)
+		if err != nil {
+			continue
+		}
+
+		off, err := idx.ReadOffset(pos)
+		if err != nil {
+			return nil, err
+		}
+
+		pf, err := OpenPackFile(f[:len(f)-4] + ".pack")
+		if err != nil {
+			return nil, err
+		}
+
+		return pf.ReadPackObject(off)
+	}
+
+	// TODO: better error ?
+	return nil, fmt.Errorf("git: object not found")
+}
+
+func (repo *Repository) loadPackIndices() []string {
+	target := filepath.Join(repo.Path, "objects", "pack", "*.idx")
+	files, err := filepath.Glob(target)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return files
 }
