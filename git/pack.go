@@ -2,7 +2,6 @@ package git
 
 import (
 	"bytes"
-	"compress/zlib"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -259,7 +258,7 @@ func (pf *PackFile) readRawObject(offset int64) (gitObject, error) {
 		size += int64(b[0]&0x7F) << uint(4+i*7)
 	}
 
-	return gitObject{otype, size, nil}, nil
+	return gitObject{otype, size, pf}, nil
 }
 
 func (pf *PackFile) ReadPackObject(offset int64) (Object, error) {
@@ -272,13 +271,11 @@ func (pf *PackFile) ReadPackObject(offset int64) (Object, error) {
 
 	switch obj.otype {
 	case ObjCommit:
-		r, err := zlib.NewReader(pf)
+		err = obj.wrapSourceWithDeflate()
 		if err != nil {
-			return nil, fmt.Errorf("git: could not create zlib reader: %v", err)
+			return nil, err
 		}
-		obj.source = r
 		commit, err := ParseCommit(obj)
-		r.Close()
 		return commit, err
 
 	case ObjOFSDelta:

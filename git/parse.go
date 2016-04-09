@@ -47,16 +47,14 @@ func OpenObject(path string) (Object, error) {
 	}
 
 	obj := gitObject{otype, size, r}
+	obj.wrapSource(r)
 
 	switch obj.Type() {
 	case ObjTree:
 		return ParseTree(obj)
 
 	case ObjCommit:
-		obj, err := ParseCommit(obj)
-		r.Close()
-		fd.Close() // hmm ignoring the errors here ..
-		return obj, err
+		return ParseCommit(obj)
 
 	case ObjBlob:
 		return ParseBlob(obj)
@@ -65,9 +63,7 @@ func OpenObject(path string) (Object, error) {
 		return ParseTag(obj)
 	}
 
-	r.Close()
-	fd.Close()
-
+	obj.Close()
 	return nil, fmt.Errorf("git: unsupported object")
 }
 
