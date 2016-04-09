@@ -4,3 +4,6 @@ gin-repo.iml
 
 contrib/ssh_host_rsa_key*
 contrib/*.rsa*
+
+.vscode
+scratchpad.go
