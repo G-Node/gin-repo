@@ -203,12 +203,16 @@ func (pi *PackIndex) FindSHA1(target SHA1) (int, error) {
 	return 0, fmt.Errorf("git: sha1 not found in index")
 }
 
+//OpenPackFile opens the git pack file at the given path
+//It will check the pack file header and version.
+//Currently only version 2 is supported.
+//NB: This is low-level API and should most likely
+//not be used directly.
 func OpenPackFile(path string) (*PackFile, error) {
 	osfd, err := os.Open(path)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error opening file: %v", err)
-		os.Exit(2)
+		return nil, err
 	}
 
 	var header PackHeader
@@ -274,14 +278,22 @@ func (pf *PackFile) AsObject(offset int64) (Object, error) {
 		return nil, err
 	}
 
-	switch obj.otype {
-	case ObjCommit:
+	if obj.otype > 0 && obj.otype < 5 {
 		err = obj.wrapSourceWithDeflate()
 		if err != nil {
 			return nil, err
 		}
-		commit, err := ParseCommit(obj)
-		return commit, err
+	}
+
+	switch obj.otype {
+	case ObjCommit:
+		return ParseCommit(obj)
+	case ObjTree:
+		return ParseTree(obj)
+	case ObjBlob:
+		return ParseBlob(obj)
+	case ObjTag:
+		return ParseTag(obj)
 
 	case ObjOFSDelta:
 		doff, err := readVarint(pf)

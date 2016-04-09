@@ -166,11 +166,19 @@ func showPack(repo *git.Repository, packid string) {
 				continue
 			}
 
-			switch c := obj.(type) {
-
-			case *git.Commit:
+			switch obj.Type() {
+			case git.ObjCommit:
+				fallthrough
+			case git.ObjTree:
+				fallthrough
+			case git.ObjTag:
 				fmt.Printf("%s └─", pf)
 				printObject(obj, pf+"  ")
+				continue
+			}
+
+			switch c := obj.(type) {
+
 			case *git.DeltaOfs:
 				fmt.Printf("%s └─Delta OFS [%d, %d, %v]\n", pf, k, off, obj.Size())
 				fmt.Printf("%s   └─ offset: %v\n", pf, c.Offset)
@@ -183,6 +191,11 @@ func showPack(repo *git.Repository, packid string) {
 				fmt.Printf("%s └─ %s %d, %d, [%d]\n", pf, obj.Type(), k, off, obj.Size())
 
 			}
+
+			//NB: we don't close the obj here
+			// because we would close the pack data
+			// file with that too, we actually might
+			// leak some zlib.Readers on the way too
 		}
 
 	}
