@@ -106,7 +106,11 @@ func printObject(obj git.Object, prefix string) {
 		fmt.Printf("%s  ├─ type:      %v\n", prefix, obj.ObjType)
 		fmt.Printf("%s  ├─ tagger:    %s\n", prefix, obj.Tagger)
 		fmt.Printf("%s  └─ message:   [%.40s...]\n", prefix, obj.Message)
+
+	default:
+		fmt.Printf("%s%v [%v]\n", prefix, obj.Type(), obj.Size())
 	}
+
 }
 
 func showPack(repo *git.Repository, packid string) {
