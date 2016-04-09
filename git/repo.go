@@ -113,22 +113,10 @@ func (repo *Repository) OpenObject(id SHA1) (Object, error) {
 			continue
 		}
 
-		pos, err := idx.FindSHA1(id)
-		if err != nil {
-			continue
+		obj, err := idx.OpenObject(id)
+		if err == nil {
+			return obj, nil
 		}
-
-		off, err := idx.ReadOffset(pos)
-		if err != nil {
-			return nil, err
-		}
-
-		pf, err := OpenPackFile(f[:len(f)-4] + ".pack")
-		if err != nil {
-			return nil, err
-		}
-
-		return pf.AsObject(off)
 	}
 
 	// from inspecting the os.isNotExist source it
