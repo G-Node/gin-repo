@@ -26,6 +26,9 @@ type PackHeader struct {
 // byte of whose object name is less than or equal to N.
 type FanOut [256]uint32
 
+//Bounds returns the how many objects whose first byte
+//has a value of b-1 (in s) and b (returned in e)
+//are contained in the fanout table
 func (fo FanOut) Bounds(b byte) (s, e int) {
 	e = int(fo[b])
 	if b > 0 {
@@ -34,6 +37,10 @@ func (fo FanOut) Bounds(b byte) (s, e int) {
 	return
 }
 
+//PackIndex represents the git pack file
+//index. It is the main object to use for
+//opening objects contained in packfiles
+//vai OpenObject
 type PackIndex struct {
 	*os.File
 
@@ -43,6 +50,9 @@ type PackIndex struct {
 	shaBase int64
 }
 
+//PackFile is git pack file with the actual
+//data in it. It should normally not be used
+//directly.
 type PackFile struct {
 	*os.File
 
