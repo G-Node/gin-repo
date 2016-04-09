@@ -197,7 +197,7 @@ func (pi *PackIndex) FindSHA1(target SHA1) (int, error) {
 		case +1: //taget > sha1
 			s = midpoint
 		default:
-			return midpoint, nil
+			return midpoint - 1, nil
 		}
 	}
 
