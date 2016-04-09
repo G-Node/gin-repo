@@ -48,20 +48,20 @@ func OpenObject(path string) (Object, error) {
 
 	obj := gitObject{otype, size, r}
 
-	switch tstr {
-	case "tree":
+	switch obj.Type() {
+	case ObjTree:
 		return ParseTree(obj)
 
-	case "commit":
+	case ObjCommit:
 		obj, err := ParseCommit(obj)
 		r.Close()
 		fd.Close() // hmm ignoring the errors here ..
 		return obj, err
 
-	case "blob":
+	case ObjBlob:
 		return ParseBlob(obj)
 
-	case "tag":
+	case ObjTag:
 		return ParseTag(obj)
 	}
 
