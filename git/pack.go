@@ -259,7 +259,7 @@ func (pf *PackFile) readRawObject(offset int64) (gitObject, error) {
 		size += int64(b[0]&0x7F) << uint(4+i*7)
 	}
 
-	return gitObject{otype, size}, nil
+	return gitObject{otype, size, nil}, nil
 }
 
 func (pf *PackFile) ReadPackObject(offset int64) (Object, error) {
@@ -276,8 +276,8 @@ func (pf *PackFile) ReadPackObject(offset int64) (Object, error) {
 		if err != nil {
 			return nil, fmt.Errorf("git: could not create zlib reader: %v", err)
 		}
-
-		commit, err := ParseCommit(r, obj.size)
+		obj.source = r
+		commit, err := ParseCommit(obj)
 		r.Close()
 		return commit, err
 
@@ -286,7 +286,7 @@ func (pf *PackFile) ReadPackObject(offset int64) (Object, error) {
 		if err != nil {
 			return nil, err
 		}
-		delta := DeltaOfs{gitObject: gitObject{ObjCommit, obj.size}, Offset: doff}
+		delta := DeltaOfs{gitObject: gitObject{ObjOFSDelta, obj.size, nil}, Offset: doff}
 		return &delta, nil
 
 	case OBjRefDelta:
@@ -295,7 +295,7 @@ func (pf *PackFile) ReadPackObject(offset int64) (Object, error) {
 		if err != nil {
 			return nil, err
 		}
-		delta := DeltaRef{gitObject: gitObject{ObjCommit, obj.size}, Base: ref}
+		delta := DeltaRef{gitObject: gitObject{OBjRefDelta, obj.size, nil}, Base: ref}
 		return &delta, nil
 
 	default:

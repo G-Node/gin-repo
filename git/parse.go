@@ -41,22 +41,28 @@ func OpenObject(path string) (Object, error) {
 		return nil, fmt.Errorf("git: object parse error: %v", err)
 	}
 
+	otype, err := ParseObjectType(tstr)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := gitObject{otype, size, r}
+
 	switch tstr {
 	case "tree":
-		return ParseTree(r, size)
+		return ParseTree(obj)
 
 	case "commit":
-		obj, err := ParseCommit(r, size)
+		obj, err := ParseCommit(obj)
 		r.Close()
 		fd.Close() // hmm ignoring the errors here ..
 		return obj, err
 
 	case "blob":
-		return ParseBlob(r, size)
+		return ParseBlob(obj)
 
 	case "tag":
-		return ParseTag(r, size)
-
+		return ParseTag(obj)
 	}
 
 	r.Close()
@@ -65,10 +71,10 @@ func OpenObject(path string) (Object, error) {
 	return nil, fmt.Errorf("git: unsupported object")
 }
 
-func ParseCommit(r io.Reader, size int64) (Object, error) {
-	c := &Commit{gitObject: gitObject{ObjCommit, size}}
+func ParseCommit(obj gitObject) (Object, error) {
+	c := &Commit{gitObject: obj}
 
-	lr := &io.LimitedReader{R: r, N: size}
+	lr := &io.LimitedReader{R: obj.source, N: obj.size}
 	br := bufio.NewReader(lr)
 
 	var err error
@@ -107,8 +113,8 @@ func ParseCommit(r io.Reader, size int64) (Object, error) {
 	return c, nil
 }
 
-func ParseTree(rc io.ReadCloser, size int64) (Object, error) {
-	tree := Tree{gitObject{ObjCommit, size}, nil, nil, rc}
+func ParseTree(obj gitObject) (Object, error) {
+	tree := Tree{obj, nil, nil}
 	return &tree, nil
 }
 
@@ -152,15 +158,15 @@ func ParseTreeEntry(r io.Reader) (*TreeEntry, error) {
 	return entry, nil
 }
 
-func ParseBlob(r io.Reader, size int64) (Object, error) {
-	blob := &Blob{gitObject{ObjBlob, size}, r}
+func ParseBlob(obj gitObject) (Object, error) {
+	blob := &Blob{obj}
 	return blob, nil
 }
 
-func ParseTag(r io.Reader, size int64) (Object, error) {
-	c := &Tag{gitObject: gitObject{ObjCommit, size}}
+func ParseTag(obj gitObject) (Object, error) {
+	c := &Tag{gitObject: obj}
 
-	lr := &io.LimitedReader{R: r, N: size}
+	lr := &io.LimitedReader{R: c.source, N: c.size}
 	br := bufio.NewReader(lr)
 
 	var err error

@@ -78,11 +78,15 @@ func (ot ObjectType) String() string {
 type Object interface {
 	Type() ObjectType
 	Size() int64
+
+	io.Closer
 }
 
 type gitObject struct {
 	otype ObjectType
 	size  int64
+
+	source io.ReadCloser
 }
 
 func (o *gitObject) Type() ObjectType {
@@ -91,6 +95,13 @@ func (o *gitObject) Type() ObjectType {
 
 func (o *gitObject) Size() int64 {
 	return o.size
+}
+
+func (o *gitObject) Close() error {
+	if o.source == nil {
+		return nil
+	}
+	return o.source.Close()
 }
 
 type Commit struct {
@@ -115,11 +126,10 @@ type Tree struct {
 
 	entry *TreeEntry
 	err   error
-	fd    io.ReadCloser
 }
 
 func (tree *Tree) Next() bool {
-	tree.entry, tree.err = ParseTreeEntry(tree.fd)
+	tree.entry, tree.err = ParseTreeEntry(tree.source)
 	return tree.err == nil
 }
 
@@ -135,14 +145,13 @@ func (tree *Tree) Entry() *TreeEntry {
 	return tree.entry
 }
 
-func (tree *Tree) Close() error {
-	return tree.fd.Close()
-}
-
 type Blob struct {
 	gitObject
+}
 
-	io.Reader
+func (b *Blob) Read(data []byte) (n int, err error) {
+	n, err = b.source.Read(data)
+	return
 }
 
 type Tag struct {

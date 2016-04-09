@@ -70,6 +70,7 @@ func catFile(repo *git.Repository, idstr string) {
 	}
 
 	printObject(obj, "")
+	obj.Close()
 }
 
 func printObject(obj git.Object, prefix string) {
