@@ -131,7 +131,9 @@ func (repo *Repository) OpenObject(id SHA1) (Object, error) {
 		return pf.ReadPackObject(off)
 	}
 
-	// TODO: better error ?
+	// from inspecting the os.isNotExist source it
+	// seems that if we have "not found" in the message
+	// os.IsNotExist() report true, which is what we want
 	return nil, fmt.Errorf("git: object not found")
 }
 
