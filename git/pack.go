@@ -261,7 +261,12 @@ func (pf *PackFile) readRawObject(offset int64) (gitObject, error) {
 	return gitObject{otype, size, pf}, nil
 }
 
-func (pf *PackFile) ReadPackObject(offset int64) (Object, error) {
+//AsObject reads the git object header at offset and
+//then parses the data as the corresponding object type.
+//The returned Object will hold onto the packfile handle
+//and with closing the Object the packfile will be closed
+//too.
+func (pf *PackFile) AsObject(offset int64) (Object, error) {
 
 	obj, err := pf.readRawObject(offset)
 

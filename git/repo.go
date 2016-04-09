@@ -128,7 +128,7 @@ func (repo *Repository) OpenObject(id SHA1) (Object, error) {
 			return nil, err
 		}
 
-		return pf.ReadPackObject(off)
+		return pf.AsObject(off)
 	}
 
 	// from inspecting the os.isNotExist source it

@@ -160,7 +160,7 @@ func showPack(repo *git.Repository, packid string) {
 				continue
 			}
 
-			obj, err := pack.Data.ReadPackObject(off)
+			obj, err := pack.Data.AsObject(off)
 			if err != nil {
 				fmt.Printf(" ERROR: %v\n", err)
 				continue
