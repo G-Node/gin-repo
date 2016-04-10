@@ -146,3 +146,40 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 		s.log(WARN, "Error while encoding, status already sent. oh oh.")
 	}
 }
+
+func (s *Server) getBranch(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	iuser := ivars["user"]
+	irepo := ivars["repo"]
+	ibranch := ivars["branch"]
+
+	base := filepath.Join(s.repoDir(iuser), irepo+".git")
+
+	repo, err := git.OpenRepository(base)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	ref, err := repo.OpenRef(ibranch)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	id, err := ref.Resolve()
+	if err != nil {
+		panic("Could not resolve ref")
+	}
+
+	branch := wire.Branch{Name: ref.Name(), Commit: id.String()}
+	js := json.NewEncoder(w)
+	err = js.Encode(branch)
+
+	if err != nil {
+		s.log(WARN, "Error while encoding, status already sent. oh oh.")
+	}
+}
+

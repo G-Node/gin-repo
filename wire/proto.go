@@ -20,3 +20,8 @@ type Repo struct {
 	Description string
 	Head        string
 }
+
+type Branch struct {
+	Name   string
+	Commit string
+}

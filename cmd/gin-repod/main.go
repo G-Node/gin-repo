@@ -180,6 +180,8 @@ Options:
 	r.HandleFunc("/users/{user}/repos", createRepo).Methods("POST")
 	r.HandleFunc("/users/{user}/repos", s.listRepos).Methods("GET")
 
+	r.HandleFunc("/users/{user}/repos/{repo}/branches/{branch}", s.getBranch).Methods("GET")
+
 	s.SetupServiceSecret()
 	s.ListenAndServe()
 }
