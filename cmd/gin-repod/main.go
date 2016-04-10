@@ -182,6 +182,8 @@ Options:
 
 	r.HandleFunc("/users/{user}/repos/{repo}/branches/{branch}", s.getBranch).Methods("GET")
 
+	r.HandleFunc("/users/{user}/repos/{repo}/objects/{object}", s.getObject).Methods("GET")
+
 	s.SetupServiceSecret()
 	s.ListenAndServe()
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -183,3 +184,74 @@ func (s *Server) getBranch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	iuser := ivars["user"]
+	irepo := ivars["repo"]
+	isha1 := ivars["object"]
+
+	base := filepath.Join(s.repoDir(iuser), irepo+".git")
+
+	repo, err := git.OpenRepository(base)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	oid, err := git.ParseSHA1(isha1)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	obj, err := repo.OpenObject(oid)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	out := bufio.NewWriter(w)
+	switch obj := obj.(type) {
+	case *git.Commit:
+		out.WriteString("{")
+		out.WriteString(fmt.Sprintf("%q: %q,\n", "type", "commit"))
+		out.WriteString(fmt.Sprintf("%q: %q,\n", "tree", obj.Tree))
+		out.WriteString(fmt.Sprintf("%q: %q,\n", "parent", obj.Parent))
+		out.WriteString(fmt.Sprintf("%q: %q,\n", "author", obj.Author))
+		out.WriteString(fmt.Sprintf("%q: %q,\n", "commiter", obj.Committer))
+		out.WriteString(fmt.Sprintf("%q: %q", "message", obj.Message))
+		out.WriteString("}")
+
+	case *git.Tree:
+		out.WriteString("{")
+		out.WriteString(fmt.Sprintf("%q: %q,", "type", "tree"))
+		out.WriteString(fmt.Sprintf("%q: [", "entries"))
+		first := true // maybe change Tree.Next() sematics, this is ugly
+		for obj.Next() {
+			if first {
+				first = false
+			} else {
+				out.WriteString(",\n")
+			}
+			entry := obj.Entry()
+			out.WriteString("{")
+			out.WriteString(fmt.Sprintf("%q: \"%08o\",\n", "mode", entry.Mode))
+			out.WriteString(fmt.Sprintf("%q: %q,\n", "name", entry.Name))
+			out.WriteString(fmt.Sprintf("%q: %q,\n", "type", entry.Type))
+			out.WriteString(fmt.Sprintf("%q: %q\n", "id", entry.ID))
+			out.WriteString("}")
+		}
+		out.WriteString("]}")
+
+	default:
+		out.WriteString("{")
+		out.WriteString(fmt.Sprintf("%q: %q", "type", obj.Type()))
+		out.WriteString("}")
+	}
+
+	out.Flush() // ignoring error
+	obj.Close() // ignoring error
+
+}
