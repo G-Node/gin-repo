@@ -19,6 +19,7 @@ func main() {
 Usage:
   gin-git show-pack <pack>
   gin-git cat-file <sha1>
+  gin-git rev-parse <ref>
  
   gin-git -h | --help
   gin-git --version
@@ -32,11 +33,13 @@ Options:
 
 	repo, err := discoverRepository()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(2)
 	}
 
-	if path, ok := args["<pack>"].(string); ok {
+	if val, ok := args["rev-parse"].(bool); ok && val {
+		revParse(repo, args["<ref>"].(string))
+	} else if path, ok := args["<pack>"].(string); ok {
 		showPack(repo, path)
 	} else if oid, ok := args["<sha1>"].(string); ok {
 
@@ -53,6 +56,27 @@ func discoverRepository() (*git.Repository, error) {
 
 	path := strings.Trim(string(data), "\n ")
 	return &git.Repository{Path: path}, nil
+}
+
+func revParse(repo *git.Repository, refstr string) {
+	ref, err := repo.OpenRef(refstr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v", err)
+		os.Exit(3)
+	}
+
+	id, err := ref.Resolve()
+	var idstr string
+	if err != nil {
+		idstr = fmt.Sprintf("ERROR: %v", err)
+	} else {
+		idstr = fmt.Sprintf("%s", id)
+	}
+
+	fmt.Printf("%s\n", refstr)
+	fmt.Printf(" └┬─ name: %s\n", ref.Name())
+	fmt.Printf("  ├─ full: %s\n", ref.Fullname())
+	fmt.Printf("  └─ SHA1: %s\n", idstr)
 }
 
 func catFile(repo *git.Repository, idstr string) {
