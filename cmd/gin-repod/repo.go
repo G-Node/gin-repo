@@ -6,12 +6,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gorilla/mux"
 
+	"regexp"
+
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/wire"
-	"regexp"
 )
 
 var nameChecker *regexp.Regexp
@@ -71,5 +73,76 @@ func createRepo(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf("Error while encoding, status already sent. oh oh.")
+	}
+}
+
+func repoToWire(repo *git.Repository) (wire.Repo, error) {
+	basename := filepath.Base(repo.Path)
+	name := basename[:len(basename)-len(filepath.Ext(basename))]
+
+	head, err := repo.OpenRef("HEAD")
+	if err != nil {
+		return wire.Repo{}, nil
+	}
+
+	//HEAD must be a symbolic ref
+	symhead := head.(*git.SymbolicRef)
+	target, err := repo.OpenRef(symhead.Symbol)
+
+	if err != nil {
+		return wire.Repo{}, nil
+	}
+
+	wr := wire.Repo{
+		Name:        name,
+		Description: repo.ReadDescription(),
+		Head:        target.Fullname()}
+
+	return wr, nil
+}
+
+func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	user := vars["user"]
+
+	base := s.repoDir(user)
+	names, err := filepath.Glob(filepath.Join(base, "*.git"))
+
+	if err != nil {
+		panic("Bad pattern for filepath.Glob(). Uh oh!")
+	}
+
+	if len(names) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	var repos []wire.Repo
+	for _, p := range names {
+		repo, err := git.OpenRepository(p)
+
+		if err != nil {
+			s.log(WARN, "could not open repo @ %q", p)
+			continue
+		}
+
+		wr, err := repoToWire(repo)
+
+		if err != nil {
+			s.log(WARN, "repo serialization error for %q", p)
+			continue
+		}
+
+		repos = append(repos, wr)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	js := json.NewEncoder(w)
+	err = js.Encode(repos)
+
+	if err != nil {
+		s.log(WARN, "Error while encoding, status already sent. oh oh.")
 	}
 }
