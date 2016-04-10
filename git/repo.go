@@ -135,3 +135,37 @@ func (repo *Repository) loadPackIndices() []string {
 
 	return files
 }
+
+//OpenRef returns the Ref with the given name or an error
+//if either no maching could be found or in case the match
+//was not unique.
+func (repo *Repository) OpenRef(name string) (Ref, error) {
+
+	if name == "HEAD" {
+		return repo.parseRef("HEAD")
+	}
+
+	matches := repo.listRefWithName(name)
+
+	//first search in local heads
+	var locals []Ref
+	for _, v := range matches {
+		if IsBranchRef(v) {
+			locals = append(locals, v)
+		}
+	}
+
+	// if we find a single local match
+	// we return it directly
+	if len(locals) == 1 {
+		return locals[0], nil
+	}
+
+	switch len(matches) {
+	case 0:
+		return nil, fmt.Errorf("git: ref matching %q not found", name)
+	case 1:
+		return matches[0], nil
+	}
+	return nil, fmt.Errorf("git: ambiguous ref name, multiple matches")
+}
