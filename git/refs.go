@@ -1,10 +1,13 @@
 package git
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -130,6 +133,9 @@ func (repo *Repository) parseRef(filename string) (Ref, error) {
 	//now to the actual contents of the ref
 	data, err := ioutil.ReadFile(filepath.Join(repo.Path, filename))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return repo.findPackedRef(base.Fullname())
+		}
 		return nil, err
 	}
 
@@ -170,6 +176,7 @@ func (repo *Repository) listRefWithName(name string) (res []Ref) {
 		r, err := repo.parseRef(name)
 
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "git: could not parse ref with name %q: %v", name, err)
 			continue
 		}
 
@@ -177,4 +184,65 @@ func (repo *Repository) listRefWithName(name string) (res []Ref) {
 	}
 
 	return
+}
+
+func (repo *Repository) loadPackedRefs() ([]Ref, error) {
+
+	fd, err := os.Open(filepath.Join(repo.Path, "packed-refs"))
+	if err != nil {
+		return nil, err
+	}
+	defer fd.Close()
+
+	r := bufio.NewReader(fd)
+
+	var refs []Ref
+	for {
+		var l string
+		l, err = r.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		head, tail := split2(l, " ")
+		if tail == "" {
+			//probably a peeled id (i.e. "^SHA1")
+			//TODO: do something with it
+			continue
+		}
+
+		name, ns, err := parseRefName(tail[:len(tail)-1])
+		if err != nil {
+			//TODO: log error, panic?
+			continue
+		}
+
+		id, err := ParseSHA1(head)
+		if err != nil {
+			//TODO: same as above
+			continue
+		}
+
+		refs = append(refs, &IDRef{ref{repo, name, ns}, id})
+	}
+
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	return refs, nil
+}
+
+func (repo *Repository) findPackedRef(name string) (Ref, error) {
+	refs, err := repo.loadPackedRefs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ref := range refs {
+		if ref.Fullname() == name {
+			return ref, nil
+		}
+	}
+	return nil, fmt.Errorf("ref with name %q not found", name)
 }
