@@ -85,22 +85,22 @@ func (r *SymbolicRef) Resolve() (SHA1, error) {
 	return ParseSHA1(string(body))
 }
 
-func (repo *Repository) parseRef(filename string) (Ref, error) {
-
+func parseRefName(filename string) (name, ns string, err error) {
 	comps := strings.Split(filename, "/")
 	n := len(comps)
 
 	if n < 1 || n == 2 || (n > 2 && comps[0] != "refs") {
-		return nil, fmt.Errorf("git: unexpected ref name: %v", filename)
+		err = fmt.Errorf("git: unexpected ref name: %v", filename)
+		return
 	}
 
-	var name, ns string
 	if n == 1 {
 		name = comps[0]
 		ns = "#special"
 	}
 
 	// 'man gitrepository-layout' is really helpfull
+	// 'man git-check-ref-format' too
 	// [HEAD|ORIG_HEAD] -> special head
 	// [0|refs][1|<ns>][2+|name]
 	// <ns> == "heads" -> local branch"
@@ -114,6 +114,15 @@ func (repo *Repository) parseRef(filename string) (Ref, error) {
 	default:
 		name = path.Join(comps[2:]...)
 		ns = comps[1]
+	}
+	return
+}
+
+func (repo *Repository) parseRef(filename string) (Ref, error) {
+
+	name, ns, err := parseRefName(filename)
+	if err != nil {
+		return nil, err
 	}
 
 	base := ref{repo, name, ns}
@@ -159,6 +168,7 @@ func (repo *Repository) listRefWithName(name string) (res []Ref) {
 
 		_, name := split2(l[:len(l)-1], " ")
 		r, err := repo.parseRef(name)
+
 		if err != nil {
 			continue
 		}
