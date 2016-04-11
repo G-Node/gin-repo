@@ -151,6 +151,9 @@ func (repo *Repository) OpenRef(name string) (Ref, error) {
 	var locals []Ref
 	for _, v := range matches {
 		if IsBranchRef(v) {
+			if name == v.Fullname() {
+				return v, nil
+			}
 			locals = append(locals, v)
 		}
 	}
