@@ -7,3 +7,5 @@ contrib/*.rsa*
 
 .vscode
 scratchpad.go
+
+**/gin.secret
