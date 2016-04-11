@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -159,8 +158,7 @@ func (repo *Repository) listRefWithName(name string) (res []Ref) {
 	body, err := cmd.Output()
 
 	if err != nil {
-		//TODO: really?
-		log.Panicf("git: unexpected error from git show-ref [%q]: %v ", name, err)
+		return
 	}
 
 	r := bytes.NewBuffer(body)
