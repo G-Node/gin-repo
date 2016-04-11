@@ -83,7 +83,7 @@ func repoToWire(repo *git.Repository) (wire.Repo, error) {
 
 	head, err := repo.OpenRef("HEAD")
 	if err != nil {
-		return wire.Repo{}, nil
+		return wire.Repo{}, err
 	}
 
 	//HEAD must be a symbolic ref
@@ -91,7 +91,7 @@ func repoToWire(repo *git.Repository) (wire.Repo, error) {
 	target, err := repo.OpenRef(symhead.Symbol)
 
 	if err != nil {
-		return wire.Repo{}, nil
+		return wire.Repo{}, err
 	}
 
 	wr := wire.Repo{
@@ -130,7 +130,7 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 		wr, err := repoToWire(repo)
 
 		if err != nil {
-			s.log(WARN, "repo serialization error for %q", p)
+			s.log(WARN, "repo serialization error for %q [%v]", p, err)
 			continue
 		}
 
