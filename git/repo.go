@@ -1,6 +1,7 @@
 package git
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -195,4 +196,34 @@ func (repo *Repository) Readlink(id SHA1) (string, error) {
 	}
 
 	return string(data), nil
+}
+
+//AnnexKeyInfo corresponds to the output for git annex examinekey
+//see Repository.AnnexExamineKey
+type AnnexKeyInfo struct {
+	Key          string
+	Backend      string
+	Bytesize     string //should be int
+	Humansize    string
+	Keyname      string
+	Hashdirlower string
+	Hashdirmixed string
+}
+
+func (repo *Repository) AnnexExamineKey(name string) (AnnexKeyInfo, error) {
+	gdir := fmt.Sprintf("--git-dir=%s", repo.Path)
+	cmd := exec.Command("git", gdir, "annex", "examinekey", name, "--json")
+	body, err := cmd.Output()
+
+	var info AnnexKeyInfo
+	if err != nil {
+		return info, err
+	}
+
+	err = json.Unmarshal(body, &info)
+	if err != nil {
+		return info, err
+	}
+
+	return info, nil
 }
