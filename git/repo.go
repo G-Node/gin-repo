@@ -172,3 +172,27 @@ func (repo *Repository) OpenRef(name string) (Ref, error) {
 	}
 	return nil, fmt.Errorf("git: ambiguous ref name, multiple matches")
 }
+
+//Readlink returns the destination of a symbilc link blob object
+func (repo *Repository) Readlink(id SHA1) (string, error) {
+
+	b, err := repo.OpenObject(id)
+	if err != nil {
+		return "", err
+	}
+
+	if b.Type() != ObjBlob {
+		return "", fmt.Errorf("id must point to a blob")
+	}
+
+	blob := b.(*Blob)
+
+	//TODO: check size and don't read unreasonable large blobs
+	data, err := ioutil.ReadAll(blob)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
