@@ -240,10 +240,39 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 			}
 			entry := obj.Entry()
 			out.WriteString("{")
-			out.WriteString(fmt.Sprintf("%q: \"%08o\",\n", "mode", entry.Mode))
-			out.WriteString(fmt.Sprintf("%q: %q,\n", "name", entry.Name))
-			out.WriteString(fmt.Sprintf("%q: %q,\n", "type", entry.Type))
+			symlink := entry.Mode == 00120000
+			if symlink {
+				//refactor: too much nesting
+				target, err := repo.Readlink(entry.ID)
+				if err != nil {
+					s.log(WARN, "could not resolve symlink for %s: %v", entry.ID, err)
+					symlink = false
+				} else if git.IsAnnexFile(target) {
+					out.WriteString(fmt.Sprintf("%q: %q,\n", "type", "annex"))
+
+					fi, err := repo.Astat(target)
+					var state string
+					if err != nil {
+						s.log(WARN, "repo.Astat failed [%s]: %v", target, err)
+						state = "error"
+					} else if fi.Have {
+						state = "have"
+					} else {
+						state = "missing"
+					}
+
+					out.WriteString(fmt.Sprintf("%q: %q,\n", "status", state))
+				} else {
+					out.WriteString(fmt.Sprintf("%q: %q,\n", "type", "symlink"))
+				}
+			}
+
+			if !symlink {
+				out.WriteString(fmt.Sprintf("%q: %q,\n", "type", entry.Type))
+			}
 			out.WriteString(fmt.Sprintf("%q: %q\n", "id", entry.ID))
+			out.WriteString(fmt.Sprintf("%q: %q,\n", "name", entry.Name))
+			out.WriteString(fmt.Sprintf("%q: \"%08o\",\n", "mode", entry.Mode))
 			out.WriteString("}")
 		}
 		out.WriteString("]}")
