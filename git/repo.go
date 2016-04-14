@@ -203,11 +203,12 @@ func (repo *Repository) Readlink(id SHA1) (string, error) {
 type AnnexKeyInfo struct {
 	Key          string
 	Backend      string
-	Bytesize     string //should be int
+	Bytesize     string // annex returns this as string in json
 	Humansize    string
 	Keyname      string
 	Hashdirlower string
 	Hashdirmixed string
+	MTime        string
 }
 
 func (repo *Repository) AnnexExamineKey(name string) (AnnexKeyInfo, error) {
@@ -226,4 +227,42 @@ func (repo *Repository) AnnexExamineKey(name string) (AnnexKeyInfo, error) {
 	}
 
 	return info, nil
+}
+
+//IsAnnexFile returns true if the file at path is
+//managed by git annex, false otherwise. Does not check
+//if the file is actually present
+func IsAnnexFile(path string) bool {
+	return strings.HasPrefix(path, ".git/annex")
+}
+
+type AnnexStat struct {
+	Name string
+	Size int64
+	Have bool
+}
+
+func (repo *Repository) Astat(target string) (*AnnexStat, error) {
+
+	sbuf := AnnexStat{Name: filepath.Base(target)}
+	ki, err := repo.AnnexExamineKey(sbuf.Name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// we are in a bare repository, therefore we use hasdirlower
+	p := filepath.Join(repo.Path, "annex", "objects", ki.Hashdirlower, ki.Key, ki.Key)
+	fi, err := os.Stat(p)
+
+	if err != nil {
+		sbuf.Have = true
+		sbuf.Size = fi.Size()
+	} else if os.IsNotExist(err) {
+		sbuf.Have = false
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &sbuf, nil
 }
