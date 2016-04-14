@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -215,6 +216,7 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 	out := bufio.NewWriter(w)
 	switch obj := obj.(type) {
 	case *git.Commit:
+		w.Header().Set("Content-Type", "application/json")
 		out.WriteString("{")
 		out.WriteString(fmt.Sprintf("%q: %q,\n", "type", "commit"))
 		out.WriteString(fmt.Sprintf("%q: %q,\n", "tree", obj.Tree))
@@ -225,6 +227,7 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		out.WriteString("}")
 
 	case *git.Tree:
+		w.Header().Set("Content-Type", "application/json")
 		out.WriteString("{")
 		out.WriteString(fmt.Sprintf("%q: %q,", "type", "tree"))
 		out.WriteString(fmt.Sprintf("%q: [", "entries"))
@@ -245,7 +248,28 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		}
 		out.WriteString("]}")
 
+	case *git.Blob:
+		n := int64(512)
+		if m := obj.Size() - 1; m < n {
+			n = m
+		}
+		buf := make([]byte, n)
+		_, err = obj.Read(buf[:])
+		if err != nil {
+			panic("IO error")
+		}
+		mtype := http.DetectContentType(buf)
+		w.Header().Set("Content-Type", mtype)
+
+		w.Write(buf)
+		_, err := io.Copy(w, obj)
+		if err != nil {
+			s.log(WARN, "io error, but data already written")
+		}
+		obj.Close()
+
 	default:
+		w.Header().Set("Content-Type", "application/json")
 		out.WriteString("{")
 		out.WriteString(fmt.Sprintf("%q: %q", "type", obj.Type()))
 		out.WriteString("}")
