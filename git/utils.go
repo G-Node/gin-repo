@@ -40,7 +40,7 @@ type zlibReadCloser struct {
 func (r *zlibReadCloser) Close() error {
 	var e1, e2 error
 
-	// this shouldn't fail every actually, since the wrapped
+	// this shouldn't fail ever actually, since the wrapped
 	//  object should have been an io.ReadCloser
 	if rc, ok := r.LimitedReader.R.(io.Closer); ok {
 		e1 = rc.Close()

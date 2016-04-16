@@ -17,10 +17,8 @@ func OpenObject(path string) (Object, error) {
 		return nil, err
 	}
 
-	//TODO: we "leak" fd here, because we
-	// will pass r into the ParseXXX functions
-	// and clients will close the zlib reader but
-	// fd will not be closed until garbage collected
+	// we wrap the zlib reader below, so it will be
+	// propery closed
 	r, err := zlib.NewReader(fd)
 	if err != nil {
 		return nil, fmt.Errorf("git: could not create zlib reader: %v", err)
