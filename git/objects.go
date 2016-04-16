@@ -187,15 +187,3 @@ type Tag struct {
 	Tagger  string
 	Message string
 }
-
-type DeltaOfs struct {
-	gitObject
-
-	Offset int64
-}
-
-type DeltaRef struct {
-	gitObject
-
-	Base SHA1
-}

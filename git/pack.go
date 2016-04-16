@@ -296,21 +296,9 @@ func (pf *PackFile) AsObject(offset int64) (Object, error) {
 		return ParseTag(obj)
 
 	case ObjOFSDelta:
-		doff, err := readVarint(pf)
-		if err != nil {
-			return nil, err
-		}
-		delta := DeltaOfs{gitObject: gitObject{ObjOFSDelta, obj.size, nil}, Offset: doff}
-		return &delta, nil
-
+		return parseDeltaOfs(obj)
 	case OBjRefDelta:
-		var ref SHA1
-		_, err := pf.Read(ref[:])
-		if err != nil {
-			return nil, err
-		}
-		delta := DeltaRef{gitObject: gitObject{OBjRefDelta, obj.size, nil}, Base: ref}
-		return &delta, nil
+		return parseDeltaRef(obj)
 
 	default:
 		return &obj, nil
