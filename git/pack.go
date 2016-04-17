@@ -176,6 +176,21 @@ func (pi *PackIndex) FindSHA1(target SHA1) (int, error) {
 	return 0, fmt.Errorf("git: sha1 not found in index")
 }
 
+func (pi *PackIndex) FindOffset(target SHA1) (int64, error) {
+
+	pos, err := pi.FindSHA1(target)
+	if err != nil {
+		return 0, err
+	}
+
+	off, err := pi.ReadOffset(pos)
+	if err != nil {
+		return 0, err
+	}
+
+	return off, nil
+}
+
 //OpenObject will try to find the object with the given id
 //in it is index and then reach out to its corresponding
 //pack file to open the actual git Object. The returned
@@ -183,12 +198,9 @@ func (pi *PackIndex) FindSHA1(target SHA1) (int, error) {
 //If the object cannot be found it will return an error
 //the can be detected via os.IsNotExist()
 func (pi *PackIndex) OpenObject(id SHA1) (Object, error) {
-	pos, err := pi.FindSHA1(id)
-	if err != nil {
-		return nil, err
-	}
 
-	off, err := pi.ReadOffset(pos)
+	off, err := pi.FindOffset(id)
+
 	if err != nil {
 		return nil, err
 	}
