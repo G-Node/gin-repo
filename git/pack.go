@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 )
@@ -303,28 +302,4 @@ func (pf *PackFile) AsObject(offset int64) (Object, error) {
 	default:
 		return &obj, nil
 	}
-}
-
-func readVarint(r io.Reader) (int64, error) {
-	b := make([]byte, 1)
-
-	_, err := r.Read(b)
-	if err != nil {
-		return 0, fmt.Errorf("git: io error: %v", err)
-	}
-
-	size := int64(b[0] & 0x7F)
-
-	for b[0]&0x80 != 0 {
-		//TODO: overflow check
-		_, err := r.Read(b)
-		if err != nil {
-			return 0, fmt.Errorf("git: io error: %v", err)
-		}
-
-		size++
-		size = (size << 7) + int64(b[0]&0x7F)
-	}
-
-	return size, nil
 }
