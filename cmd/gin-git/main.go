@@ -214,7 +214,7 @@ func showPack(repo *git.Repository, packid string) {
 		os.Exit(1)
 	}
 
-	data, err := git.OpenPackFile(path + ".pack")
+	data, err := idx.OpenPackFile()
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

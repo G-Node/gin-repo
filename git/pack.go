@@ -191,6 +191,16 @@ func (pi *PackIndex) FindOffset(target SHA1) (int64, error) {
 	return off, nil
 }
 
+func (pi *PackIndex) OpenPackFile() (*PackFile, error) {
+	f := pi.Name()
+	pf, err := OpenPackFile(f[:len(f)-4] + ".pack")
+	if err != nil {
+		return nil, err
+	}
+
+	return pf, nil
+}
+
 //OpenObject will try to find the object with the given id
 //in it is index and then reach out to its corresponding
 //pack file to open the actual git Object. The returned
@@ -205,8 +215,7 @@ func (pi *PackIndex) OpenObject(id SHA1) (Object, error) {
 		return nil, err
 	}
 
-	f := pi.Name()
-	pf, err := OpenPackFile(f[:len(f)-4] + ".pack")
+	pf, err := pi.OpenPackFile()
 	if err != nil {
 		return nil, err
 	}
