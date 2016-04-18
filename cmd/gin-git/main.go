@@ -18,6 +18,7 @@ func main() {
 
 Usage:
   gin-git show-pack <pack>
+  gin-git show-delta <pack> <sha1>
   gin-git cat-file <sha1>
   gin-git rev-parse <ref>
  
@@ -39,8 +40,10 @@ Options:
 
 	if val, ok := args["rev-parse"].(bool); ok && val {
 		revParse(repo, args["<ref>"].(string))
-	} else if path, ok := args["<pack>"].(string); ok {
-		showPack(repo, path)
+	} else if val, ok := args["show-pack"].(bool); ok && val {
+		showPack(repo, args["<pack>"].(string))
+	} else if val, ok := args["show-delta"].(bool); ok && val {
+		showDelta(repo, args["<pack>"].(string), args["<sha1>"].(string))
 	} else if oid, ok := args["<sha1>"].(string); ok {
 
 		catFile(repo, oid)
@@ -95,6 +98,66 @@ func catFile(repo *git.Repository, idstr string) {
 
 	printObject(obj, "")
 	obj.Close()
+}
+
+func showDelta(repo *git.Repository, packid string, idstr string) {
+	oid, err := git.ParseSHA1(idstr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid object id: %v", err)
+		os.Exit(3)
+	}
+
+	if !strings.HasPrefix(packid, "pack-") {
+		packid = "pack-" + packid
+	}
+
+	path := filepath.Join(repo.Path, "objects", "pack", packid)
+	idx, err := git.PackIndexOpen(path + ".idx")
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	obj, err := idx.OpenObject(oid)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	delta, ok := obj.(*git.Delta)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "Object with %s is not Delta", oid)
+		os.Exit(1)
+	}
+
+	pf := ""
+	fmt.Printf("%s Delta [%d]\n", pf, delta.Size())
+	fmt.Printf("%s   └─ data: %v\n", pf, delta.Offset)
+
+	if obj.Type() == git.ObjOFSDelta {
+		fmt.Printf("%s   ├─ off: %v\n", pf, delta.BaseOff)
+	} else {
+		fmt.Printf("%s   ├─ ref: %v\n", pf, delta.BaseRef)
+	}
+
+	decoder := git.NewDeltaDecoder(delta)
+	if !decoder.Setup() {
+		fmt.Fprintln(os.Stderr, decoder.Err())
+		os.Exit(3)
+	}
+
+	fmt.Printf("%s   └┬─ Instructions\n", pf)
+	for decoder.NextOp() {
+		op := decoder.Op()
+		switch op.Op {
+		case git.DeltaOpCopy:
+			fmt.Printf("%s     ├─ Copy: %d @ %d\n", pf, op.Size, op.Offset)
+		case git.DeltaOpInsert:
+			fmt.Printf("%s     ├─ Insert %d\n", pf, op.Size)
+		}
+	}
+
 }
 
 func printObject(obj git.Object, prefix string) {
@@ -210,14 +273,15 @@ func showPack(repo *git.Repository, packid string) {
 
 			switch c := obj.(type) {
 
-			case *git.DeltaOfs:
-				fmt.Printf("%s └─Delta OFS [%d, %d, %v]\n", pf, k, off, obj.Size())
-				fmt.Printf("%s   └─ offset: %v\n", pf, c.Offset)
+			case *git.Delta:
+				fmt.Printf("%s └─Delta [%d, %d, %v]\n", pf, k, off, obj.Size())
+				fmt.Printf("%s   └─ data: %v\n", pf, c.Offset)
 
-			case *git.DeltaRef:
-				fmt.Printf("%s └─Delta Ref [%d, %d, %v]\n", pf, k, off, obj.Size())
-				fmt.Printf("%s   └─ ref: %v\n", pf, c.Base)
-
+				if obj.Type() == git.ObjOFSDelta {
+					fmt.Printf("%s   └─ off: %v\n", pf, c.BaseOff)
+				} else {
+					fmt.Printf("%s   └─ ref: %v\n", pf, c.BaseRef)
+				}
 			default:
 				fmt.Printf("%s └─ %s %d, %d, [%d]\n", pf, obj.Type(), k, off, obj.Size())
 
