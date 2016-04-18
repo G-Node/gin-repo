@@ -47,12 +47,16 @@ func OpenObject(path string) (Object, error) {
 	obj := gitObject{otype, size, r}
 	obj.wrapSource(r)
 
-	switch obj.Type() {
-	case ObjTree:
-		return ParseTree(obj)
+	return parseObject(obj)
+}
 
+func parseObject(obj gitObject) (Object, error) {
+	switch obj.otype {
 	case ObjCommit:
 		return ParseCommit(obj)
+
+	case ObjTree:
+		return ParseTree(obj)
 
 	case ObjBlob:
 		return ParseBlob(obj)
