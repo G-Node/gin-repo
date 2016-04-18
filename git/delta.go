@@ -3,115 +3,45 @@ package git
 import (
 	"fmt"
 	"io"
+	"os"
 )
 
-type DeltaObject interface {
-	NextOp() bool
-	Op() DeltaOp
-	Err() error
-	SourceSize() int64
-	TargetSize() int64
-}
-
-type deltaObject struct {
+type Delta struct {
 	gitObject
 
-	op  DeltaOp
-	err error
-
-	sizeSource int64
-	sizeTarget int64
-}
-
-type DeltaOfs struct {
-	deltaObject
+	BaseRef SHA1
+	BaseOff int64
 
 	Offset int64
 }
 
-type DeltaRef struct {
-	deltaObject
+func (pf *PackFile) parseDelta(obj gitObject) (Object, error) {
+	delta := Delta{gitObject: obj}
 
-	Base SHA1
-}
+	var err error
+	if obj.otype == OBjRefDelta {
+		_, err = pf.Read(delta.BaseRef[:])
+		//TODO: check n?
 
-type DeltaOpCode byte
+		if err != nil {
+			return nil, err
+		}
 
-const (
-	DeltaOpInsert = 1
-	DeltaOpCopy   = 2
-)
-
-type DeltaOp struct {
-	Op     DeltaOpCode
-	Size   int64
-	Offset int64
-}
-
-func (o *deltaObject) Op() DeltaOp {
-	return o.op
-}
-
-func (o *deltaObject) Err() error {
-	return o.err
-}
-
-func (o *deltaObject) SourceSize() int64 {
-	return o.sizeSource
-}
-
-func (o *deltaObject) TargetSize() int64 {
-	return o.sizeTarget
-}
-
-func parseDelta(obj gitObject) (deltaObject, error) {
-	delta := deltaObject{gitObject: obj}
-	err := delta.wrapSourceWithDeflate()
-	if err != nil {
-		return delta, err
+	} else {
+		delta.BaseOff, err = readVarint(pf)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	delta.sizeSource, err = readDeltaSize(delta.source)
-	if err != nil {
-		return delta, err
-	}
-
-	delta.sizeTarget, err = readDeltaSize(delta.source)
-	if err != nil {
-		return delta, err
-	}
-
-	return delta, nil
-}
-
-func parseDeltaOfs(obj gitObject) (Object, error) {
-	offset, err := readVarint(obj.source)
-
+	delta.Offset, err = pf.Seek(0, os.SEEK_CUR)
 	if err != nil {
 		return nil, err
 	}
 
-	delta, err := parseDelta(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DeltaOfs{delta, offset}, nil
-}
-
-func parseDeltaRef(obj gitObject) (Object, error) {
-	var ref SHA1
-	_, err := obj.source.Read(ref[:])
-	if err != nil {
-		return nil, err
-	}
-
-	delta, err := parseDelta(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DeltaRef{delta, ref}, nil
+	//hmm not sure about this here
+	delta.wrapSourceWithDeflate()
+	return &delta, nil
 }
 
 func readDeltaSize(r io.Reader) (int64, error) {
@@ -173,37 +103,104 @@ func readVarint(r io.Reader) (int64, error) {
 	return size, nil
 }
 
-func (o *deltaObject) NextOp() (ok bool) {
+type DeltaOpCode byte
+
+const (
+	DeltaOpInsert = 1
+	DeltaOpCopy   = 2
+)
+
+type DeltaOp struct {
+	Op     DeltaOpCode
+	Size   int64
+	Offset int64
+}
+
+type DeltaDecoder interface {
+	Setup() bool
+	NextOp() bool
+	Op() DeltaOp
+	Err() error
+	SourceSize() int64
+	TargetSize() int64
+}
+
+type deltaDecoder struct {
+	r io.Reader
+
+	op  DeltaOp
+	err error
+
+	sizeSource int64
+	sizeTarget int64
+}
+
+func NewDeltaDecoder(delta *Delta) DeltaDecoder {
+	return &deltaDecoder{r: delta.source}
+}
+
+func (d *deltaDecoder) Setup() bool {
+
+	d.sizeSource, d.err = readDeltaSize(d.r)
+	if d.err != nil {
+		return false
+	}
+
+	d.sizeTarget, d.err = readDeltaSize(d.r)
+	if d.err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (d *deltaDecoder) Op() DeltaOp {
+	return d.op
+}
+
+func (d *deltaDecoder) Err() error {
+	return d.err
+}
+
+func (d *deltaDecoder) SourceSize() int64 {
+	return d.sizeSource
+}
+
+func (d *deltaDecoder) TargetSize() int64 {
+	return d.sizeTarget
+}
+
+func (d *deltaDecoder) NextOp() (ok bool) {
 	var b [1]byte
-	_, err := o.source.Read(b[:])
+	_, err := d.r.Read(b[:])
 
 	if err != nil {
 		return
 	}
 
 	if b[0]&0x80 != 0 {
-		o.op.Op = DeltaOpInsert
+		d.op.Op = DeltaOpCopy
 		op := b[0]
-		o.op.Offset, o.err = decodeInt(o.source, op, 4)
+		d.op.Offset, d.err = decodeInt(d.r, op, 4)
 		if err != nil {
 			return
 		}
 
-		o.op.Size, err = decodeInt(o.source, op>>4, 3)
+		d.op.Size, err = decodeInt(d.r, op>>4, 3)
 		if err != nil {
 			return
 		}
 
-		if o.op.Size == 0 {
-			o.op.Size = 0x10000
+		if d.op.Size == 0 {
+			d.op.Size = 0x10000
 		}
 		ok = true
 	} else if n := b[0]; n > 0 {
-		o.op.Op = DeltaOpCopy
-		o.op.Size = int64(n)
+		d.op.Op = DeltaOpInsert
+		d.op.Size = int64(n)
 		ok = true
 	} else {
-		o.err = fmt.Errorf("git: unknown delta op code")
+		d.err = fmt.Errorf("git: unknown delta op code")
 	}
 
 	return

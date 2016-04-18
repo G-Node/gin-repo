@@ -307,9 +307,9 @@ func (pf *PackFile) AsObject(offset int64) (Object, error) {
 		return ParseTag(obj)
 
 	case ObjOFSDelta:
-		return parseDeltaOfs(obj)
+		fallthrough
 	case OBjRefDelta:
-		return parseDeltaRef(obj)
+		return pf.parseDelta(obj)
 
 	default:
 		return &obj, nil
