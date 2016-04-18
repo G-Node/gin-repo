@@ -15,7 +15,7 @@ type Delta struct {
 	Offset int64
 }
 
-func (pf *PackFile) parseDelta(obj gitObject) (Object, error) {
+func (pf *PackFile) parseDelta(obj gitObject) (*Delta, error) {
 	delta := Delta{gitObject: obj}
 
 	var err error

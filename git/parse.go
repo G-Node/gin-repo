@@ -69,7 +69,7 @@ func parseObject(obj gitObject) (Object, error) {
 	return nil, fmt.Errorf("git: unsupported object")
 }
 
-func ParseCommit(obj gitObject) (Object, error) {
+func ParseCommit(obj gitObject) (*Commit, error) {
 	c := &Commit{gitObject: obj}
 
 	lr := &io.LimitedReader{R: obj.source, N: obj.size}
@@ -111,7 +111,7 @@ func ParseCommit(obj gitObject) (Object, error) {
 	return c, nil
 }
 
-func ParseTree(obj gitObject) (Object, error) {
+func ParseTree(obj gitObject) (*Tree, error) {
 	tree := Tree{obj, nil, nil}
 	return &tree, nil
 }
@@ -156,12 +156,12 @@ func ParseTreeEntry(r io.Reader) (*TreeEntry, error) {
 	return entry, nil
 }
 
-func ParseBlob(obj gitObject) (Object, error) {
+func ParseBlob(obj gitObject) (*Blob, error) {
 	blob := &Blob{obj}
 	return blob, nil
 }
 
-func ParseTag(obj gitObject) (Object, error) {
+func ParseTag(obj gitObject) (*Tag, error) {
 	c := &Tag{gitObject: obj}
 
 	lr := &io.LimitedReader{R: c.source, N: c.size}
