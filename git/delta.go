@@ -121,8 +121,11 @@ type DeltaDecoder interface {
 	NextOp() bool
 	Op() DeltaOp
 	Err() error
+
 	SourceSize() int64
 	TargetSize() int64
+
+	Patch(r io.ReadSeeker, w io.Writer) error
 }
 
 type deltaDecoder struct {
@@ -204,4 +207,29 @@ func (d *deltaDecoder) NextOp() (ok bool) {
 	}
 
 	return
+}
+
+func (d *deltaDecoder) Patch(r io.ReadSeeker, w io.Writer) error {
+
+	for d.NextOp() {
+		op := d.Op()
+		switch op.Op {
+		case DeltaOpCopy:
+			_, err := r.Seek(op.Offset, os.SEEK_CUR)
+			if err != nil {
+				return err
+			}
+			_, err = io.CopyN(w, r, op.Size)
+			if err != nil {
+				return err
+			}
+		case DeltaOpInsert:
+			_, err := io.CopyN(w, d.r, op.Size)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
