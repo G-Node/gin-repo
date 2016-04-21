@@ -117,7 +117,9 @@ type DeltaOp struct {
 }
 
 type DeltaDecoder interface {
+	Reset(io.Reader)
 	Setup() bool
+
 	NextOp() bool
 	Op() DeltaOp
 	Err() error
@@ -140,6 +142,18 @@ type deltaDecoder struct {
 
 func NewDeltaDecoder(delta *Delta) DeltaDecoder {
 	return &deltaDecoder{r: delta.source}
+}
+
+func NewDeltaDecoderReader(r io.Reader) DeltaDecoder {
+	return &deltaDecoder{r: r}
+}
+
+func (d *deltaDecoder) Reset(r io.Reader) {
+	d.r = r
+	d.err = nil
+	d.sizeSource = 0
+	d.sizeTarget = 0
+	d.op.Op = 0
 }
 
 func (d *deltaDecoder) Setup() bool {
@@ -232,4 +246,19 @@ func (d *deltaDecoder) Patch(r io.ReadSeeker, w io.Writer) error {
 	}
 
 	return nil
+}
+
+type idResolver interface {
+	FindOffset(SHA1) (int64, error)
+}
+
+type deltaChain struct {
+	baseObj gitObject
+	baseOff int64
+
+	links []Delta
+}
+
+func (d *deltaChain) Len() int {
+	return len(d.links)
 }

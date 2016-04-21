@@ -2,8 +2,11 @@ package git
 
 import (
 	"bytes"
+	"compress/zlib"
 	"encoding/binary"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -226,7 +229,42 @@ func (pi *PackIndex) OpenObject(id SHA1) (Object, error) {
 		return nil, err
 	}
 
-	return pf.AsObject(off)
+	obj, err := pf.readRawObject(off)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if IsStandardObject(obj.otype) {
+		err = obj.wrapSourceWithDeflate()
+		if err != nil {
+			pf.Close()
+			return nil, err
+		}
+		return parseObject(obj)
+	}
+
+	if !IsDeltaObject(obj.otype) {
+		return nil, fmt.Errorf("git: unsupported object")
+	}
+
+	//This is a delta object
+	delta, err := pf.parseDelta(obj)
+
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(os.Stderr, "Building delta chain...\n")
+	chain, err := pf.buildDeltaChain(delta, pi)
+	fmt.Fprintf(os.Stderr, "Done [%v]\n", err)
+
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(os.Stderr, "Patching delta\n")
+	return pf.patchDelta(chain)
 }
 
 //OpenPackFile opens the git pack file at the given path
@@ -329,4 +367,119 @@ func (pf *PackFile) AsObject(offset int64) (Object, error) {
 	default:
 		return &obj, nil
 	}
+}
+
+func (pf *PackFile) buildDeltaChain(d *Delta, r idResolver) (*deltaChain, error) {
+	var chain deltaChain
+	var err error
+
+	for {
+
+		chain.links = append(chain.links, *d)
+
+		if d.otype == OBjRefDelta && d.BaseOff == 0 {
+			d.BaseOff, err = r.FindOffset(d.BaseRef)
+			if err != nil {
+				break
+			}
+		}
+
+		var obj gitObject
+		obj, err = pf.readRawObject(d.BaseOff)
+		if err != nil {
+			break
+		}
+
+		if IsStandardObject(obj.otype) {
+			chain.baseObj = obj
+			chain.baseOff = d.BaseOff
+			break
+		} else if !IsDeltaObject(obj.otype) {
+			err = fmt.Errorf("git: unexpected object type in delta chain")
+			break
+		}
+
+		d, err = pf.parseDelta(obj)
+	}
+
+	if err != nil {
+		//cleanup
+		return nil, err
+	}
+
+	return &chain, nil
+}
+
+func (pf *PackFile) patchDelta(c *deltaChain) (Object, error) {
+	fmt.Fprintf(os.Stderr, "Patching delta ...\n")
+
+	_, err := pf.Seek(c.baseOff, os.SEEK_SET)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := zlib.NewReader(pf)
+	if err != nil {
+		return nil, err
+	}
+
+	defer r.Close()
+
+	ibuf := bytes.NewBuffer(make([]byte, 0, c.baseObj.Size()))
+
+	fmt.Fprintf(os.Stderr, "Delta: base -> buffer\n")
+	_, err = io.Copy(ibuf, &io.LimitedReader{R: r, N: c.baseObj.Size()})
+	if err != nil {
+		return nil, err
+	}
+
+	decoder := NewDeltaDecoderReader(nil)
+
+	obuf := bytes.NewBuffer(make([]byte, 0, c.baseObj.Size()))
+
+	for i := len(c.links); i > 0; i-- {
+		fmt.Fprintf(os.Stderr, "Delta %d\n", i)
+		lk := c.links[i-1]
+
+		_, err := pf.Seek(lk.Offset, os.SEEK_SET)
+		if err != nil {
+			return nil, err
+		}
+
+		r, err := zlib.NewReader(pf)
+		if err != nil {
+			return nil, err
+		}
+
+		decoder.Reset(&io.LimitedReader{R: r, N: lk.Size()})
+
+		ok := decoder.Setup()
+		if !ok {
+			r.Close()
+			return nil, decoder.Err()
+		}
+
+		if decoder.TargetSize() > int64(^uint(0)>>1) {
+			r.Close()
+			return nil, fmt.Errorf("git: target to large for delta unpatching")
+		}
+
+		obuf.Grow(int(decoder.TargetSize()))
+		obuf.Truncate(0)
+
+		err = decoder.Patch(bytes.NewReader(ibuf.Bytes()), obuf)
+
+		r.Close()
+
+		if err != nil {
+			return nil, err
+		}
+
+		obuf, ibuf = ibuf, obuf
+	}
+
+	//ibuf is holding the data
+
+	obj := gitObject{c.baseObj.otype, int64(ibuf.Len()), ioutil.NopCloser(ibuf)}
+	return parseObject(obj)
 }
