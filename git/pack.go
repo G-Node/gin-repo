@@ -153,7 +153,13 @@ func (pi *PackIndex) ReadOffset(pos int) (int64, error) {
 
 func (pi *PackIndex) FindSHA1(target SHA1) (int, error) {
 
+	//s, e and midpoint are one-based indices,
+	//where s is the index before interval and
+	//e is the index of the last element in it
+	//-> search interval is: (s | 1, 2, ... e]
 	s, e := pi.FO.Bounds(target[0])
+
+	//invariant: object is, if present, in the interval, (s, e]
 	for s < e {
 		midpoint := s + (e-s+1)/2
 
@@ -164,9 +170,9 @@ func (pi *PackIndex) FindSHA1(target SHA1) (int, error) {
 		}
 
 		switch bytes.Compare(target[:], sha[:]) {
-		case -1: // target < sha1
-			e = midpoint
-		case +1: //taget > sha1
+		case -1: // target < sha1, new interval (s, m-1]
+			e = midpoint - 1
+		case +1: //taget > sha1, new interval (m, e]
 			s = midpoint
 		default:
 			return midpoint - 1, nil
