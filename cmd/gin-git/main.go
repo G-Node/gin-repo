@@ -182,7 +182,7 @@ func printObject(obj git.Object, prefix string) {
 			fmt.Fprintf(os.Stderr, "%sERROR: %v", prefix, err)
 		}
 	case *git.Blob:
-		fmt.Printf("Blob [%v]\n", obj.Size())
+		fmt.Fprintf(os.Stderr, "Blob [%v]\n", obj.Size())
 		_, err := io.Copy(os.Stdout, obj)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%sERROR: %v", prefix, err)
