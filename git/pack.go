@@ -301,32 +301,27 @@ func OpenPackFile(path string) (*PackFile, error) {
 }
 
 func (pf *PackFile) readRawObject(offset int64) (gitObject, error) {
-	_, err := pf.Seek(offset, 0)
+	r := newPackReader(pf, offset)
+
+	b, err := r.ReadByte()
 	if err != nil {
 		return gitObject{}, fmt.Errorf("git: io error: %v", err)
 	}
 
-	b := make([]byte, 1)
-	_, err = pf.Read(b)
+	otype := ObjectType((b & 0x70) >> 4)
 
-	if err != nil {
-		return gitObject{}, fmt.Errorf("git: io error: %v", err)
-	}
-
-	otype := ObjectType((b[0] & 0x70) >> 4)
-	size := int64(b[0] & 0xF)
-
-	for i := 0; b[0]&0x80 != 0; i++ {
+	size := int64(b & 0xF)
+	for i := 0; b&0x80 != 0; i++ {
 		// TODO: overflow for i > 9
-		_, err = pf.Read(b)
+		b, err = r.ReadByte()
 		if err != nil {
 			return gitObject{}, fmt.Errorf("git io error: %v", err)
 		}
 
-		size += int64(b[0]&0x7F) << uint(4+i*7)
+		size += int64(b&0x7F) << uint(4+i*7)
 	}
 
-	return gitObject{otype, size, pf}, nil
+	return gitObject{otype, size, r}, nil
 }
 
 //AsObject reads the git object header at offset and
@@ -482,4 +477,31 @@ func (pf *PackFile) patchDelta(c *deltaChain) (Object, error) {
 
 	obj := gitObject{c.baseObj.otype, int64(ibuf.Len()), ioutil.NopCloser(ibuf)}
 	return parseObject(obj)
+}
+
+type packReader struct {
+	fd    *PackFile
+	start int64
+	off   int64
+}
+
+func newPackReader(fd *PackFile, offset int64) *packReader {
+	return &packReader{fd: fd, start: offset, off: offset}
+}
+
+func (p *packReader) Read(d []byte) (n int, err error) {
+	n, err = p.fd.ReadAt(d, p.off)
+	p.off += int64(n)
+	return
+}
+
+func (p *packReader) ReadByte() (c byte, err error) {
+	var b [1]byte
+	_, err = p.Read(b[:])
+	c = b[0]
+	return
+}
+
+func (p *packReader) Close() (err error) {
+	return //noop
 }
