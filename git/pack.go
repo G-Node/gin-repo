@@ -235,11 +235,6 @@ func (pi *PackIndex) OpenObject(id SHA1) (Object, error) {
 	}
 
 	if IsStandardObject(obj.otype) {
-		err = obj.wrapSourceWithDeflate()
-		if err != nil {
-			pf.Close() // not if we share packfiles
-			return nil, err
-		}
 		return parseObject(obj)
 	}
 
@@ -317,7 +312,16 @@ func (pf *PackFile) readRawObject(offset int64) (gitObject, error) {
 		size += int64(b&0x7F) << uint(4+i*7)
 	}
 
-	return gitObject{otype, size, r}, nil
+	obj := gitObject{otype, size, r}
+
+	if IsStandardObject(otype) {
+		err = obj.wrapSourceWithDeflate()
+		if err != nil {
+			return gitObject{}, err
+		}
+	}
+
+	return obj, nil
 }
 
 //AsObject reads the git object header at offset and
@@ -328,13 +332,6 @@ func (pf *PackFile) AsObject(offset int64) (Object, error) {
 
 	if err != nil {
 		return nil, err
-	}
-
-	if obj.otype > 0 && obj.otype < 5 {
-		err = obj.wrapSourceWithDeflate()
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	switch obj.otype {
@@ -378,10 +375,6 @@ func (pf *PackFile) buildDeltaChain(d *Delta, r idResolver) (*deltaChain, error)
 			break
 		}
 		if IsStandardObject(obj.otype) {
-			err = obj.wrapSourceWithDeflate()
-			if err != nil {
-				return nil, err
-			}
 			chain.baseObj = obj
 			chain.baseOff = d.BaseOff
 			break
