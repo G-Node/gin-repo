@@ -9,10 +9,13 @@ import (
 type Delta struct {
 	gitObject
 
-	BaseRef SHA1
-	BaseOff int64
+	BaseRef    SHA1
+	BaseOff    int64
+	SizeSource int64
+	SizeTarget int64
 
-	Offset int64
+	op  DeltaOp
+	err error
 }
 
 func (pf *PackFile) parseDelta(obj gitObject) (*Delta, error) {
@@ -20,7 +23,7 @@ func (pf *PackFile) parseDelta(obj gitObject) (*Delta, error) {
 
 	var err error
 	if obj.otype == OBjRefDelta {
-		_, err = pf.Read(delta.BaseRef[:])
+		_, err = delta.source.Read(delta.BaseRef[:])
 		//TODO: check n?
 
 		if err != nil {
@@ -28,19 +31,31 @@ func (pf *PackFile) parseDelta(obj gitObject) (*Delta, error) {
 		}
 
 	} else {
-		delta.BaseOff, err = readVarint(pf)
+		off, err := readVarint(delta.source)
 		if err != nil {
 			return nil, err
 		}
+
+		r := delta.source.(*packReader)
+		delta.BaseOff = r.start - off
 	}
 
-	delta.Offset, err = pf.Seek(0, os.SEEK_CUR)
+	err = delta.wrapSourceWithDeflate()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "wrapSourceWithDeflate failed [%#v]\n", delta.gitObject.source)
+		return nil, err
+	}
+
+	delta.SizeSource, err = readDeltaSize(delta.source)
 	if err != nil {
 		return nil, err
 	}
 
-	//hmm not sure about this here
-	delta.wrapSourceWithDeflate()
+	delta.SizeTarget, err = readDeltaSize(delta.source)
+	if err != nil {
+		return nil, err
+	}
+
 	return &delta, nil
 }
 
@@ -116,80 +131,17 @@ type DeltaOp struct {
 	Offset int64
 }
 
-type DeltaDecoder interface {
-	Reset(io.Reader)
-	Setup() bool
-
-	NextOp() bool
-	Op() DeltaOp
-	Err() error
-
-	SourceSize() int64
-	TargetSize() int64
-
-	Patch(r io.ReadSeeker, w io.Writer) error
-}
-
-type deltaDecoder struct {
-	r io.Reader
-
-	op  DeltaOp
-	err error
-
-	sizeSource int64
-	sizeTarget int64
-}
-
-func NewDeltaDecoder(delta *Delta) DeltaDecoder {
-	return &deltaDecoder{r: delta.source}
-}
-
-func NewDeltaDecoderReader(r io.Reader) DeltaDecoder {
-	return &deltaDecoder{r: r}
-}
-
-func (d *deltaDecoder) Reset(r io.Reader) {
-	d.r = r
-	d.err = nil
-	d.sizeSource = 0
-	d.sizeTarget = 0
-	d.op.Op = 0
-}
-
-func (d *deltaDecoder) Setup() bool {
-
-	d.sizeSource, d.err = readDeltaSize(d.r)
-	if d.err != nil {
-		return false
-	}
-
-	d.sizeTarget, d.err = readDeltaSize(d.r)
-	if d.err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (d *deltaDecoder) Op() DeltaOp {
+func (d *Delta) Op() DeltaOp {
 	return d.op
 }
 
-func (d *deltaDecoder) Err() error {
+func (d *Delta) Err() error {
 	return d.err
 }
 
-func (d *deltaDecoder) SourceSize() int64 {
-	return d.sizeSource
-}
-
-func (d *deltaDecoder) TargetSize() int64 {
-	return d.sizeTarget
-}
-
-func (d *deltaDecoder) NextOp() (ok bool) {
+func (d *Delta) NextOp() (ok bool) {
 	var b [1]byte
-	_, err := d.r.Read(b[:])
+	_, err := d.source.Read(b[:])
 
 	if err != nil {
 		return
@@ -198,12 +150,12 @@ func (d *deltaDecoder) NextOp() (ok bool) {
 	if b[0]&0x80 != 0 {
 		d.op.Op = DeltaOpCopy
 		op := b[0]
-		d.op.Offset, d.err = decodeInt(d.r, op, 4)
+		d.op.Offset, d.err = decodeInt(d.source, op, 4)
 		if err != nil {
 			return
 		}
 
-		d.op.Size, err = decodeInt(d.r, op>>4, 3)
+		d.op.Size, err = decodeInt(d.source, op>>4, 3)
 		if err != nil {
 			return
 		}
@@ -223,22 +175,23 @@ func (d *deltaDecoder) NextOp() (ok bool) {
 	return
 }
 
-func (d *deltaDecoder) Patch(r io.ReadSeeker, w io.Writer) error {
+func (d *Delta) Patch(r io.ReadSeeker, w io.Writer) error {
 
 	for d.NextOp() {
 		op := d.Op()
 		switch op.Op {
 		case DeltaOpCopy:
-			_, err := r.Seek(op.Offset, os.SEEK_CUR)
+			_, err := r.Seek(op.Offset, os.SEEK_SET)
 			if err != nil {
 				return err
 			}
+
 			_, err = io.CopyN(w, r, op.Size)
 			if err != nil {
 				return err
 			}
 		case DeltaOpInsert:
-			_, err := io.CopyN(w, d.r, op.Size)
+			_, err := io.CopyN(w, d.source, op.Size)
 			if err != nil {
 				return err
 			}

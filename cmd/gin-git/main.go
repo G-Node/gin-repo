@@ -133,7 +133,6 @@ func showDelta(repo *git.Repository, packid string, idstr string) {
 
 	pf := ""
 	fmt.Printf("%s Delta [%d]\n", pf, delta.Size())
-	fmt.Printf("%s   └─ data: %v\n", pf, delta.Offset)
 
 	if obj.Type() == git.ObjOFSDelta {
 		fmt.Printf("%s   ├─ off: %v\n", pf, delta.BaseOff)
@@ -141,20 +140,17 @@ func showDelta(repo *git.Repository, packid string, idstr string) {
 		fmt.Printf("%s   ├─ ref: %v\n", pf, delta.BaseRef)
 	}
 
-	decoder := git.NewDeltaDecoder(delta)
-	if !decoder.Setup() {
-		fmt.Fprintln(os.Stderr, decoder.Err())
-		os.Exit(3)
-	}
-
+	fmt.Printf("%s   ├─ source size: %v\n", pf, delta.SizeSource)
+	fmt.Printf("%s   ├─ taget  size: %v\n", pf, delta.SizeTarget)
 	fmt.Printf("%s   └┬─ Instructions\n", pf)
-	for decoder.NextOp() {
-		op := decoder.Op()
+
+	for delta.NextOp() {
+		op := delta.Op()
 		switch op.Op {
 		case git.DeltaOpCopy:
-			fmt.Printf("%s     ├─ Copy: %d @ %d\n", pf, op.Size, op.Offset)
+			fmt.Printf("%s    ├─ Copy: %d @ %d\n", pf, op.Size, op.Offset)
 		case git.DeltaOpInsert:
-			fmt.Printf("%s     ├─ Insert %d\n", pf, op.Size)
+			fmt.Printf("%s    ├─ Insert %d\n", pf, op.Size)
 		}
 	}
 
@@ -275,7 +271,6 @@ func showPack(repo *git.Repository, packid string) {
 
 			case *git.Delta:
 				fmt.Printf("%s └─Delta [%d, %d, %v]\n", pf, k, off, obj.Size())
-				fmt.Printf("%s   └─ data: %v\n", pf, c.Offset)
 
 				if obj.Type() == git.ObjOFSDelta {
 					fmt.Printf("%s   └─ off: %v\n", pf, c.BaseOff)

@@ -117,6 +117,8 @@ func (repo *Repository) OpenObject(id SHA1) (Object, error) {
 		obj, err := idx.OpenObject(id)
 		if err == nil {
 			return obj, nil
+		} else if !os.IsNotExist(err) {
+			return nil, err
 		}
 	}
 
