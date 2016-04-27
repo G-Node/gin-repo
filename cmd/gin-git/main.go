@@ -264,6 +264,7 @@ func showPack(repo *git.Repository, packid string) {
 			case git.ObjTag:
 				fmt.Printf("%s └─", pf)
 				printObject(obj, pf+"  ")
+				obj.Close()
 				continue
 			}
 
@@ -282,10 +283,7 @@ func showPack(repo *git.Repository, packid string) {
 
 			}
 
-			//NB: we don't close the obj here
-			// because we would close the pack data
-			// file with that too, we actually might
-			// leak some zlib.Readers on the way too
+			obj.Close()
 		}
 
 	}
