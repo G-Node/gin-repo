@@ -158,7 +158,7 @@ type TreeEntry struct {
 //if there was an error while advacing. Use Err()
 //to resolve between the to conditions.
 func (tree *Tree) Next() bool {
-	tree.entry, tree.err = ParseTreeEntry(tree.source)
+	tree.entry, tree.err = parseTreeEntry(tree.source)
 	return tree.err == nil
 }
 

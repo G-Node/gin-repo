@@ -61,23 +61,23 @@ func OpenObject(path string) (Object, error) {
 func parseObject(obj gitObject) (Object, error) {
 	switch obj.otype {
 	case ObjCommit:
-		return ParseCommit(obj)
+		return parseCommit(obj)
 
 	case ObjTree:
-		return ParseTree(obj)
+		return parseTree(obj)
 
 	case ObjBlob:
-		return ParseBlob(obj)
+		return parseBlob(obj)
 
 	case ObjTag:
-		return ParseTag(obj)
+		return parseTag(obj)
 	}
 
 	obj.Close()
 	return nil, fmt.Errorf("git: unsupported object")
 }
 
-func ParseCommit(obj gitObject) (*Commit, error) {
+func parseCommit(obj gitObject) (*Commit, error) {
 	c := &Commit{gitObject: obj}
 
 	lr := &io.LimitedReader{R: obj.source, N: obj.size}
@@ -119,12 +119,12 @@ func ParseCommit(obj gitObject) (*Commit, error) {
 	return c, nil
 }
 
-func ParseTree(obj gitObject) (*Tree, error) {
+func parseTree(obj gitObject) (*Tree, error) {
 	tree := Tree{obj, nil, nil}
 	return &tree, nil
 }
 
-func ParseTreeEntry(r io.Reader) (*TreeEntry, error) {
+func parseTreeEntry(r io.Reader) (*TreeEntry, error) {
 	//format is: [mode{ASCII, octal}][space][name][\0][SHA1]
 	entry := &TreeEntry{}
 
@@ -164,12 +164,12 @@ func ParseTreeEntry(r io.Reader) (*TreeEntry, error) {
 	return entry, nil
 }
 
-func ParseBlob(obj gitObject) (*Blob, error) {
+func parseBlob(obj gitObject) (*Blob, error) {
 	blob := &Blob{obj}
 	return blob, nil
 }
 
-func ParseTag(obj gitObject) (*Tag, error) {
+func parseTag(obj gitObject) (*Tag, error) {
 	c := &Tag{gitObject: obj}
 
 	lr := &io.LimitedReader{R: c.source, N: c.size}

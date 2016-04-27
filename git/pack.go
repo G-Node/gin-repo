@@ -324,13 +324,13 @@ func (pf *PackFile) OpenObject(offset int64) (Object, error) {
 
 	switch obj.otype {
 	case ObjCommit:
-		return ParseCommit(obj)
+		return parseCommit(obj)
 	case ObjTree:
-		return ParseTree(obj)
+		return parseTree(obj)
 	case ObjBlob:
-		return ParseBlob(obj)
+		return parseBlob(obj)
 	case ObjTag:
-		return ParseTag(obj)
+		return parseTag(obj)
 
 	case ObjOFSDelta:
 		fallthrough
