@@ -11,17 +11,17 @@ import (
 	"strings"
 )
 
-func OpenObject(path string) (Object, error) {
+func openRawObject(path string) (gitObject, error) {
 	fd, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return gitObject{}, err
 	}
 
 	// we wrap the zlib reader below, so it will be
 	// propery closed
 	r, err := zlib.NewReader(fd)
 	if err != nil {
-		return nil, fmt.Errorf("git: could not create zlib reader: %v", err)
+		return gitObject{}, fmt.Errorf("git: could not create zlib reader: %v", err)
 	}
 
 	// general object format is
@@ -29,24 +29,32 @@ func OpenObject(path string) (Object, error) {
 
 	line, err := readUntilNul(r)
 	if err != nil {
-		return nil, err
+		return gitObject{}, err
 	}
 
 	tstr, lstr := split2(line, " ")
 	size, err := strconv.ParseInt(lstr, 10, 64)
 
 	if err != nil {
-		return nil, fmt.Errorf("git: object parse error: %v", err)
+		return gitObject{}, fmt.Errorf("git: object parse error: %v", err)
 	}
 
 	otype, err := ParseObjectType(tstr)
 	if err != nil {
-		return nil, err
+		return gitObject{}, err
 	}
 
 	obj := gitObject{otype, size, r}
 	obj.wrapSource(r)
 
+	return obj, nil
+}
+
+func OpenObject(path string) (Object, error) {
+	obj, err := openRawObject(path)
+	if err != nil {
+		return nil, err
+	}
 	return parseObject(obj)
 }
 
