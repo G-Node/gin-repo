@@ -50,14 +50,6 @@ func openRawObject(path string) (gitObject, error) {
 	return obj, nil
 }
 
-func OpenObject(path string) (Object, error) {
-	obj, err := openRawObject(path)
-	if err != nil {
-		return nil, err
-	}
-	return parseObject(obj)
-}
-
 func parseObject(obj gitObject) (Object, error) {
 	switch obj.otype {
 	case ObjCommit:
