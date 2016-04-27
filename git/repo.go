@@ -94,15 +94,49 @@ func (repo *Repository) InitAnnex() error {
 }
 
 func (repo *Repository) OpenObject(id SHA1) (Object, error) {
+	obj, err := repo.openRawObject(id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if IsStandardObject(obj.otype) {
+		return parseObject(obj)
+	}
+
+	//not a standard object, *must* be a delta object,
+	// we know of no other types
+	if !IsDeltaObject(obj.otype) {
+		return nil, fmt.Errorf("git: unsupported object")
+	}
+
+	delta, err := parseDelta(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	chain, err := buildDeltaChain(delta, repo)
+
+	if err != nil {
+		return nil, err
+	}
+
+	//TODO: check depth, and especially expected memory usage
+	// beofre actually patching it
+
+	return patchDelta(chain)
+}
+
+func (repo *Repository) openRawObject(id SHA1) (gitObject, error) {
 	idstr := id.String()
 	opath := filepath.Join(repo.Path, "objects", idstr[:2], idstr[2:])
 
-	obj, err := OpenObject(opath)
+	obj, err := openRawObject(opath)
 
 	if err == nil {
 		return obj, nil
 	} else if err != nil && !os.IsNotExist(err) {
-		return nil, err
+		return obj, err
 	}
 
 	indicies := repo.loadPackIndices()
@@ -114,18 +148,33 @@ func (repo *Repository) OpenObject(id SHA1) (Object, error) {
 			continue
 		}
 
-		obj, err := idx.OpenObject(id)
-		if err == nil {
-			return obj, nil
-		} else if !os.IsNotExist(err) {
-			return nil, err
+		//TODO: we should leave index files open,
+		defer idx.Close()
+
+		off, err := idx.FindOffset(id)
+
+		if err != nil {
+			continue
 		}
+
+		pf, err := idx.OpenPackFile()
+		if err != nil {
+			return gitObject{}, err
+		}
+
+		obj, err := pf.readRawObject(off)
+
+		if err != nil {
+			return gitObject{}, err
+		}
+
+		return obj, nil
 	}
 
 	// from inspecting the os.isNotExist source it
 	// seems that if we have "not found" in the message
 	// os.IsNotExist() report true, which is what we want
-	return nil, fmt.Errorf("git: object not found")
+	return gitObject{}, fmt.Errorf("git: object not found")
 }
 
 func (repo *Repository) loadPackIndices() []string {
