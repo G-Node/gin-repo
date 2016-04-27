@@ -85,6 +85,14 @@ func (ot ObjectType) String() string {
 	return "unknown"
 }
 
+func IsStandardObject(ot ObjectType) bool {
+	return ot > 0 && ot < 5
+}
+
+func IsDeltaObject(ot ObjectType) bool {
+	return ot == ObjOFSDelta || ot == OBjRefDelta
+}
+
 //Object holds information common to
 //all git objects like their type and size.
 type Object interface {

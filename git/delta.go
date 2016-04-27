@@ -1,117 +1,66 @@
 package git
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
 )
 
-type DeltaObject interface {
-	NextOp() bool
-	Op() DeltaOp
-	Err() error
-	SourceSize() int64
-	TargetSize() int64
-}
-
-type deltaObject struct {
+type Delta struct {
 	gitObject
 
+	BaseRef    SHA1
+	BaseOff    int64
+	SizeSource int64
+	SizeTarget int64
+
+	pf  *PackFile
 	op  DeltaOp
 	err error
-
-	sizeSource int64
-	sizeTarget int64
 }
 
-type DeltaOfs struct {
-	deltaObject
+func parseDelta(obj gitObject) (*Delta, error) {
+	delta := Delta{gitObject: obj}
 
-	Offset int64
-}
+	var err error
+	if obj.otype == OBjRefDelta {
+		_, err = delta.source.Read(delta.BaseRef[:])
+		//TODO: check n?
 
-type DeltaRef struct {
-	deltaObject
+		if err != nil {
+			return nil, err
+		}
 
-	Base SHA1
-}
+	} else {
+		off, err := readVarint(delta.source)
+		if err != nil {
+			return nil, err
+		}
 
-type DeltaOpCode byte
-
-const (
-	DeltaOpInsert = 1
-	DeltaOpCopy   = 2
-)
-
-type DeltaOp struct {
-	Op     DeltaOpCode
-	Size   int64
-	Offset int64
-}
-
-func (o *deltaObject) Op() DeltaOp {
-	return o.op
-}
-
-func (o *deltaObject) Err() error {
-	return o.err
-}
-
-func (o *deltaObject) SourceSize() int64 {
-	return o.sizeSource
-}
-
-func (o *deltaObject) TargetSize() int64 {
-	return o.sizeTarget
-}
-
-func parseDelta(obj gitObject) (deltaObject, error) {
-	delta := deltaObject{gitObject: obj}
-	err := delta.wrapSourceWithDeflate()
-	if err != nil {
-		return delta, err
+		r := delta.source.(*packReader)
+		delta.BaseOff = r.start - off
 	}
 
-	delta.sizeSource, err = readDeltaSize(delta.source)
-	if err != nil {
-		return delta, err
-	}
+	delta.pf = delta.source.(*packReader).fd
 
-	delta.sizeTarget, err = readDeltaSize(delta.source)
-	if err != nil {
-		return delta, err
-	}
-
-	return delta, nil
-}
-
-func parseDeltaOfs(obj gitObject) (Object, error) {
-	offset, err := readVarint(obj.source)
-
+	err = delta.wrapSourceWithDeflate()
 	if err != nil {
 		return nil, err
 	}
 
-	delta, err := parseDelta(obj)
+	delta.SizeSource, err = readDeltaSize(delta.source)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DeltaOfs{delta, offset}, nil
-}
-
-func parseDeltaRef(obj gitObject) (Object, error) {
-	var ref SHA1
-	_, err := obj.source.Read(ref[:])
+	delta.SizeTarget, err = readDeltaSize(delta.source)
 	if err != nil {
 		return nil, err
 	}
 
-	delta, err := parseDelta(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DeltaRef{delta, ref}, nil
+	return &delta, nil
 }
 
 func readDeltaSize(r io.Reader) (int64, error) {
@@ -173,38 +122,182 @@ func readVarint(r io.Reader) (int64, error) {
 	return size, nil
 }
 
-func (o *deltaObject) NextOp() (ok bool) {
+type DeltaOpCode byte
+
+const (
+	DeltaOpInsert = 1
+	DeltaOpCopy   = 2
+)
+
+type DeltaOp struct {
+	Op     DeltaOpCode
+	Size   int64
+	Offset int64
+}
+
+func (d *Delta) Op() DeltaOp {
+	return d.op
+}
+
+func (d *Delta) Err() error {
+	return d.err
+}
+
+func (d *Delta) NextOp() (ok bool) {
 	var b [1]byte
-	_, err := o.source.Read(b[:])
+	_, err := d.source.Read(b[:])
 
 	if err != nil {
 		return
 	}
 
 	if b[0]&0x80 != 0 {
-		o.op.Op = DeltaOpInsert
+		d.op.Op = DeltaOpCopy
 		op := b[0]
-		o.op.Offset, o.err = decodeInt(o.source, op, 4)
+		d.op.Offset, d.err = decodeInt(d.source, op, 4)
 		if err != nil {
 			return
 		}
 
-		o.op.Size, err = decodeInt(o.source, op>>4, 3)
+		d.op.Size, err = decodeInt(d.source, op>>4, 3)
 		if err != nil {
 			return
 		}
 
-		if o.op.Size == 0 {
-			o.op.Size = 0x10000
+		if d.op.Size == 0 {
+			d.op.Size = 0x10000
 		}
 		ok = true
 	} else if n := b[0]; n > 0 {
-		o.op.Op = DeltaOpCopy
-		o.op.Size = int64(n)
+		d.op.Op = DeltaOpInsert
+		d.op.Size = int64(n)
 		ok = true
 	} else {
-		o.err = fmt.Errorf("git: unknown delta op code")
+		d.err = fmt.Errorf("git: unknown delta op code")
 	}
 
 	return
+}
+
+func (d *Delta) Patch(r io.ReadSeeker, w io.Writer) error {
+
+	for d.NextOp() {
+		op := d.Op()
+		switch op.Op {
+		case DeltaOpCopy:
+			_, err := r.Seek(op.Offset, os.SEEK_SET)
+			if err != nil {
+				return err
+			}
+
+			_, err = io.CopyN(w, r, op.Size)
+			if err != nil {
+				return err
+			}
+		case DeltaOpInsert:
+			_, err := io.CopyN(w, d.source, op.Size)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+type idResolver interface {
+	FindOffset(SHA1) (int64, error)
+}
+
+type deltaChain struct {
+	baseObj gitObject
+	baseOff int64
+
+	links []Delta
+}
+
+func (d *deltaChain) Len() int {
+	return len(d.links)
+}
+
+type objectSource interface {
+	openRawObject(id SHA1) (gitObject, error)
+}
+
+func buildDeltaChain(d *Delta, s objectSource) (*deltaChain, error) {
+	var chain deltaChain
+	var err error
+
+	for err == nil {
+
+		chain.links = append(chain.links, *d)
+
+		var obj gitObject
+		if d.otype == OBjRefDelta {
+			obj, err = s.openRawObject(d.BaseRef)
+		} else {
+			obj, err = d.pf.readRawObject(d.BaseOff)
+		}
+
+		if err != nil {
+			break
+		}
+
+		if IsStandardObject(obj.otype) {
+			chain.baseObj = obj
+			chain.baseOff = d.BaseOff
+			break
+		} else if !IsDeltaObject(obj.otype) {
+			err = fmt.Errorf("git: unexpected object type in delta chain")
+			break
+		}
+
+		d, err = parseDelta(obj)
+	}
+
+	if err != nil {
+		//cleanup
+		return nil, err
+	}
+
+	return &chain, nil
+}
+
+func patchDelta(c *deltaChain) (Object, error) {
+
+	ibuf := bytes.NewBuffer(make([]byte, 0, c.baseObj.Size()))
+	n, err := io.Copy(ibuf, c.baseObj.source)
+	if err != nil {
+		return nil, err
+	}
+
+	if n != c.baseObj.Size() {
+		return nil, io.ErrUnexpectedEOF
+	}
+
+	obuf := bytes.NewBuffer(make([]byte, 0, c.baseObj.Size()))
+
+	for i := len(c.links); i > 0; i-- {
+		lk := c.links[i-1]
+
+		if lk.SizeTarget > int64(^uint(0)>>1) {
+			return nil, fmt.Errorf("git: target to large for delta unpatching")
+		}
+
+		obuf.Grow(int(lk.SizeTarget))
+		obuf.Truncate(0)
+
+		err = lk.Patch(bytes.NewReader(ibuf.Bytes()), obuf)
+
+		if err != nil {
+			return nil, err
+		}
+
+		obuf, ibuf = ibuf, obuf
+	}
+
+	//ibuf is holding the data
+
+	obj := gitObject{c.baseObj.otype, int64(ibuf.Len()), ioutil.NopCloser(ibuf)}
+	return parseObject(obj)
 }

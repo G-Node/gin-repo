@@ -153,7 +153,13 @@ func (pi *PackIndex) ReadOffset(pos int) (int64, error) {
 
 func (pi *PackIndex) FindSHA1(target SHA1) (int, error) {
 
+	//s, e and midpoint are one-based indices,
+	//where s is the index before interval and
+	//e is the index of the last element in it
+	//-> search interval is: (s | 1, 2, ... e]
 	s, e := pi.FO.Bounds(target[0])
+
+	//invariant: object is, if present, in the interval, (s, e]
 	for s < e {
 		midpoint := s + (e-s+1)/2
 
@@ -164,9 +170,9 @@ func (pi *PackIndex) FindSHA1(target SHA1) (int, error) {
 		}
 
 		switch bytes.Compare(target[:], sha[:]) {
-		case -1: // target < sha1
-			e = midpoint
-		case +1: //taget > sha1
+		case -1: // target < sha1, new interval (s, m-1]
+			e = midpoint - 1
+		case +1: //taget > sha1, new interval (m, e]
 			s = midpoint
 		default:
 			return midpoint - 1, nil
@@ -191,12 +197,22 @@ func (pi *PackIndex) FindOffset(target SHA1) (int64, error) {
 	return off, nil
 }
 
+func (pi *PackIndex) OpenPackFile() (*PackFile, error) {
+	f := pi.Name()
+	pf, err := OpenPackFile(f[:len(f)-4] + ".pack")
+	if err != nil {
+		return nil, err
+	}
+
+	return pf, nil
+}
+
 //OpenObject will try to find the object with the given id
 //in it is index and then reach out to its corresponding
-//pack file to open the actual git Object. The returned
-//Object needs to be closed by the caller.
+//pack file to open the actual git Object.
 //If the object cannot be found it will return an error
 //the can be detected via os.IsNotExist()
+//Delta objects will returned as such and not be resolved.
 func (pi *PackIndex) OpenObject(id SHA1) (Object, error) {
 
 	off, err := pi.FindOffset(id)
@@ -205,13 +221,29 @@ func (pi *PackIndex) OpenObject(id SHA1) (Object, error) {
 		return nil, err
 	}
 
-	f := pi.Name()
-	pf, err := OpenPackFile(f[:len(f)-4] + ".pack")
+	pf, err := pi.OpenPackFile()
 	if err != nil {
 		return nil, err
 	}
 
-	return pf.AsObject(off)
+	obj, err := pf.readRawObject(off)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if IsStandardObject(obj.otype) {
+		return parseObject(obj)
+	}
+
+	if !IsDeltaObject(obj.otype) {
+		return nil, fmt.Errorf("git: unsupported object")
+	}
+
+	//This is a delta object
+	delta, err := parseDelta(obj)
+
+	return delta, err
 }
 
 //OpenPackFile opens the git pack file at the given path
@@ -248,52 +280,46 @@ func OpenPackFile(path string) (*PackFile, error) {
 }
 
 func (pf *PackFile) readRawObject(offset int64) (gitObject, error) {
-	_, err := pf.Seek(offset, 0)
+	r := newPackReader(pf, offset)
+
+	b, err := r.ReadByte()
 	if err != nil {
 		return gitObject{}, fmt.Errorf("git: io error: %v", err)
 	}
 
-	b := make([]byte, 1)
-	_, err = pf.Read(b)
+	otype := ObjectType((b & 0x70) >> 4)
 
-	if err != nil {
-		return gitObject{}, fmt.Errorf("git: io error: %v", err)
-	}
-
-	otype := ObjectType((b[0] & 0x70) >> 4)
-	size := int64(b[0] & 0xF)
-
-	for i := 0; b[0]&0x80 != 0; i++ {
+	size := int64(b & 0xF)
+	for i := 0; b&0x80 != 0; i++ {
 		// TODO: overflow for i > 9
-		_, err = pf.Read(b)
+		b, err = r.ReadByte()
 		if err != nil {
 			return gitObject{}, fmt.Errorf("git io error: %v", err)
 		}
 
-		size += int64(b[0]&0x7F) << uint(4+i*7)
+		size += int64(b&0x7F) << uint(4+i*7)
 	}
 
-	return gitObject{otype, size, pf}, nil
+	obj := gitObject{otype, size, r}
+
+	if IsStandardObject(otype) {
+		err = obj.wrapSourceWithDeflate()
+		if err != nil {
+			return gitObject{}, err
+		}
+	}
+
+	return obj, nil
 }
 
-//AsObject reads the git object header at offset and
+//OpenObject reads the git object header at offset and
 //then parses the data as the corresponding object type.
-//The returned Object will hold onto the packfile handle
-//and with closing the Object the packfile will be closed
-//too.
-func (pf *PackFile) AsObject(offset int64) (Object, error) {
+func (pf *PackFile) OpenObject(offset int64) (Object, error) {
 
 	obj, err := pf.readRawObject(offset)
 
 	if err != nil {
 		return nil, err
-	}
-
-	if obj.otype > 0 && obj.otype < 5 {
-		err = obj.wrapSourceWithDeflate()
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	switch obj.otype {
@@ -307,11 +333,38 @@ func (pf *PackFile) AsObject(offset int64) (Object, error) {
 		return ParseTag(obj)
 
 	case ObjOFSDelta:
-		return parseDeltaOfs(obj)
+		fallthrough
 	case OBjRefDelta:
-		return parseDeltaRef(obj)
+		return parseDelta(obj)
 
 	default:
 		return &obj, nil
 	}
+}
+
+type packReader struct {
+	fd    *PackFile
+	start int64
+	off   int64
+}
+
+func newPackReader(fd *PackFile, offset int64) *packReader {
+	return &packReader{fd: fd, start: offset, off: offset}
+}
+
+func (p *packReader) Read(d []byte) (n int, err error) {
+	n, err = p.fd.ReadAt(d, p.off)
+	p.off += int64(n)
+	return
+}
+
+func (p *packReader) ReadByte() (c byte, err error) {
+	var b [1]byte
+	_, err = p.Read(b[:])
+	c = b[0]
+	return
+}
+
+func (p *packReader) Close() (err error) {
+	return //noop
 }

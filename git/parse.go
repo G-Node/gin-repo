@@ -11,17 +11,17 @@ import (
 	"strings"
 )
 
-func OpenObject(path string) (Object, error) {
+func openRawObject(path string) (gitObject, error) {
 	fd, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return gitObject{}, err
 	}
 
 	// we wrap the zlib reader below, so it will be
 	// propery closed
 	r, err := zlib.NewReader(fd)
 	if err != nil {
-		return nil, fmt.Errorf("git: could not create zlib reader: %v", err)
+		return gitObject{}, fmt.Errorf("git: could not create zlib reader: %v", err)
 	}
 
 	// general object format is
@@ -29,30 +29,42 @@ func OpenObject(path string) (Object, error) {
 
 	line, err := readUntilNul(r)
 	if err != nil {
-		return nil, err
+		return gitObject{}, err
 	}
 
 	tstr, lstr := split2(line, " ")
 	size, err := strconv.ParseInt(lstr, 10, 64)
 
 	if err != nil {
-		return nil, fmt.Errorf("git: object parse error: %v", err)
+		return gitObject{}, fmt.Errorf("git: object parse error: %v", err)
 	}
 
 	otype, err := ParseObjectType(tstr)
 	if err != nil {
-		return nil, err
+		return gitObject{}, err
 	}
 
 	obj := gitObject{otype, size, r}
 	obj.wrapSource(r)
 
-	switch obj.Type() {
-	case ObjTree:
-		return ParseTree(obj)
+	return obj, nil
+}
 
+func OpenObject(path string) (Object, error) {
+	obj, err := openRawObject(path)
+	if err != nil {
+		return nil, err
+	}
+	return parseObject(obj)
+}
+
+func parseObject(obj gitObject) (Object, error) {
+	switch obj.otype {
 	case ObjCommit:
 		return ParseCommit(obj)
+
+	case ObjTree:
+		return ParseTree(obj)
 
 	case ObjBlob:
 		return ParseBlob(obj)
@@ -65,7 +77,7 @@ func OpenObject(path string) (Object, error) {
 	return nil, fmt.Errorf("git: unsupported object")
 }
 
-func ParseCommit(obj gitObject) (Object, error) {
+func ParseCommit(obj gitObject) (*Commit, error) {
 	c := &Commit{gitObject: obj}
 
 	lr := &io.LimitedReader{R: obj.source, N: obj.size}
@@ -107,7 +119,7 @@ func ParseCommit(obj gitObject) (Object, error) {
 	return c, nil
 }
 
-func ParseTree(obj gitObject) (Object, error) {
+func ParseTree(obj gitObject) (*Tree, error) {
 	tree := Tree{obj, nil, nil}
 	return &tree, nil
 }
@@ -152,12 +164,12 @@ func ParseTreeEntry(r io.Reader) (*TreeEntry, error) {
 	return entry, nil
 }
 
-func ParseBlob(obj gitObject) (Object, error) {
+func ParseBlob(obj gitObject) (*Blob, error) {
 	blob := &Blob{obj}
 	return blob, nil
 }
 
-func ParseTag(obj gitObject) (Object, error) {
+func ParseTag(obj gitObject) (*Tag, error) {
 	c := &Tag{gitObject: obj}
 
 	lr := &io.LimitedReader{R: c.source, N: c.size}
