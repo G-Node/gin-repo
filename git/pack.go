@@ -312,9 +312,9 @@ func (pf *PackFile) readRawObject(offset int64) (gitObject, error) {
 	return obj, nil
 }
 
-//AsObject reads the git object header at offset and
+//OpenObject reads the git object header at offset and
 //then parses the data as the corresponding object type.
-func (pf *PackFile) AsObject(offset int64) (Object, error) {
+func (pf *PackFile) OpenObject(offset int64) (Object, error) {
 
 	obj, err := pf.readRawObject(offset)
 
