@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -211,10 +209,10 @@ func (pi *PackIndex) OpenPackFile() (*PackFile, error) {
 
 //OpenObject will try to find the object with the given id
 //in it is index and then reach out to its corresponding
-//pack file to open the actual git Object. The returned
-//Object needs to be closed by the caller.
+//pack file to open the actual git Object.
 //If the object cannot be found it will return an error
 //the can be detected via os.IsNotExist()
+//Delta objects will returned as such and not be resolved.
 func (pi *PackIndex) OpenObject(id SHA1) (Object, error) {
 
 	off, err := pi.FindOffset(id)
@@ -243,19 +241,9 @@ func (pi *PackIndex) OpenObject(id SHA1) (Object, error) {
 	}
 
 	//This is a delta object
-	delta, err := pf.parseDelta(obj)
+	delta, err := parseDelta(obj)
 
-	if err != nil {
-		return nil, err
-	}
-
-	chain, err := pf.buildDeltaChain(delta, pi)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return pf.patchDelta(chain)
+	return delta, err
 }
 
 //OpenPackFile opens the git pack file at the given path
@@ -347,90 +335,11 @@ func (pf *PackFile) AsObject(offset int64) (Object, error) {
 	case ObjOFSDelta:
 		fallthrough
 	case OBjRefDelta:
-		return pf.parseDelta(obj)
+		return parseDelta(obj)
 
 	default:
 		return &obj, nil
 	}
-}
-
-func (pf *PackFile) buildDeltaChain(d *Delta, r idResolver) (*deltaChain, error) {
-	var chain deltaChain
-	var err error
-
-	for err == nil {
-
-		chain.links = append(chain.links, *d)
-
-		if d.otype == OBjRefDelta && d.BaseOff == 0 {
-			d.BaseOff, err = r.FindOffset(d.BaseRef)
-			if err != nil {
-				break
-			}
-		}
-
-		var obj gitObject
-		obj, err = pf.readRawObject(d.BaseOff)
-		if err != nil {
-			break
-		}
-		if IsStandardObject(obj.otype) {
-			chain.baseObj = obj
-			chain.baseOff = d.BaseOff
-			break
-		} else if !IsDeltaObject(obj.otype) {
-			err = fmt.Errorf("git: unexpected object type in delta chain")
-			break
-		}
-
-		d, err = pf.parseDelta(obj)
-	}
-
-	if err != nil {
-		//cleanup
-		return nil, err
-	}
-
-	return &chain, nil
-}
-
-func (pf *PackFile) patchDelta(c *deltaChain) (Object, error) {
-
-	ibuf := bytes.NewBuffer(make([]byte, 0, c.baseObj.Size()))
-	n, err := io.Copy(ibuf, c.baseObj.source)
-	if err != nil {
-		return nil, err
-	}
-
-	if n != c.baseObj.Size() {
-		return nil, io.ErrUnexpectedEOF
-	}
-
-	obuf := bytes.NewBuffer(make([]byte, 0, c.baseObj.Size()))
-
-	for i := len(c.links); i > 0; i-- {
-		lk := c.links[i-1]
-
-		if lk.SizeTarget > int64(^uint(0)>>1) {
-			return nil, fmt.Errorf("git: target to large for delta unpatching")
-		}
-
-		obuf.Grow(int(lk.SizeTarget))
-		obuf.Truncate(0)
-
-		err = lk.Patch(bytes.NewReader(ibuf.Bytes()), obuf)
-
-		if err != nil {
-			return nil, err
-		}
-
-		obuf, ibuf = ibuf, obuf
-	}
-
-	//ibuf is holding the data
-
-	obj := gitObject{c.baseObj.otype, int64(ibuf.Len()), ioutil.NopCloser(ibuf)}
-	return parseObject(obj)
 }
 
 type packReader struct {

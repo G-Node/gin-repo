@@ -1,8 +1,10 @@
 package git
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 )
 
@@ -14,11 +16,12 @@ type Delta struct {
 	SizeSource int64
 	SizeTarget int64
 
+	pf  *PackFile
 	op  DeltaOp
 	err error
 }
 
-func (pf *PackFile) parseDelta(obj gitObject) (*Delta, error) {
+func parseDelta(obj gitObject) (*Delta, error) {
 	delta := Delta{gitObject: obj}
 
 	var err error
@@ -40,9 +43,10 @@ func (pf *PackFile) parseDelta(obj gitObject) (*Delta, error) {
 		delta.BaseOff = r.start - off
 	}
 
+	delta.pf = delta.source.(*packReader).fd
+
 	err = delta.wrapSourceWithDeflate()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "wrapSourceWithDeflate failed [%#v]\n", delta.gitObject.source)
 		return nil, err
 	}
 
@@ -214,4 +218,86 @@ type deltaChain struct {
 
 func (d *deltaChain) Len() int {
 	return len(d.links)
+}
+
+type objectSource interface {
+	openRawObject(id SHA1) (gitObject, error)
+}
+
+func buildDeltaChain(d *Delta, s objectSource) (*deltaChain, error) {
+	var chain deltaChain
+	var err error
+
+	for err == nil {
+
+		chain.links = append(chain.links, *d)
+
+		var obj gitObject
+		if d.otype == OBjRefDelta {
+			obj, err = s.openRawObject(d.BaseRef)
+		} else {
+			obj, err = d.pf.readRawObject(d.BaseOff)
+		}
+
+		if err != nil {
+			break
+		}
+
+		if IsStandardObject(obj.otype) {
+			chain.baseObj = obj
+			chain.baseOff = d.BaseOff
+			break
+		} else if !IsDeltaObject(obj.otype) {
+			err = fmt.Errorf("git: unexpected object type in delta chain")
+			break
+		}
+
+		d, err = parseDelta(obj)
+	}
+
+	if err != nil {
+		//cleanup
+		return nil, err
+	}
+
+	return &chain, nil
+}
+
+func patchDelta(c *deltaChain) (Object, error) {
+
+	ibuf := bytes.NewBuffer(make([]byte, 0, c.baseObj.Size()))
+	n, err := io.Copy(ibuf, c.baseObj.source)
+	if err != nil {
+		return nil, err
+	}
+
+	if n != c.baseObj.Size() {
+		return nil, io.ErrUnexpectedEOF
+	}
+
+	obuf := bytes.NewBuffer(make([]byte, 0, c.baseObj.Size()))
+
+	for i := len(c.links); i > 0; i-- {
+		lk := c.links[i-1]
+
+		if lk.SizeTarget > int64(^uint(0)>>1) {
+			return nil, fmt.Errorf("git: target to large for delta unpatching")
+		}
+
+		obuf.Grow(int(lk.SizeTarget))
+		obuf.Truncate(0)
+
+		err = lk.Patch(bytes.NewReader(ibuf.Bytes()), obuf)
+
+		if err != nil {
+			return nil, err
+		}
+
+		obuf, ibuf = ibuf, obuf
+	}
+
+	//ibuf is holding the data
+
+	obj := gitObject{c.baseObj.otype, int64(ibuf.Len()), ioutil.NopCloser(ibuf)}
+	return parseObject(obj)
 }
