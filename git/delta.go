@@ -259,7 +259,7 @@ func buildDeltaChain(d *Delta, s objectSource) (*deltaChain, error) {
 	return &chain, nil
 }
 
-func (c *deltaChain) patchDelta() (Object, error) {
+func (c *deltaChain) resolve() (Object, error) {
 
 	ibuf := bytes.NewBuffer(make([]byte, 0, c.baseObj.Size()))
 	n, err := io.Copy(ibuf, c.baseObj.source)
