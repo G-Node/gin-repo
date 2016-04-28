@@ -62,6 +62,20 @@ func OpenRepository(path string) (*Repository, error) {
 	return &Repository{Path: path}, nil
 }
 
+//DiscoverRepository returns the git repository that contains the
+//current working directory, or and error if the current working
+//dir does not lie inside one.
+func DiscoverRepository() (*Repository, error) {
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	data, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	path := strings.Trim(string(data), "\n ")
+	return &Repository{Path: path}, nil
+}
+
 func (repo *Repository) ReadDescription() string {
 	path := filepath.Join(repo.Path, "description")
 

@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"os/exec"
-
 	"github.com/G-Node/gin-repo/git"
 	"github.com/docopt/docopt-go"
 )
@@ -32,7 +30,7 @@ Options:
 	args, _ := docopt.Parse(usage, nil, true, "gin-git 0.1", false)
 	//fmt.Fprintf(os.Stderr, "%#v\n", args)
 
-	repo, err := discoverRepository()
+	repo, err := git.DiscoverRepository()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(2)
@@ -48,17 +46,6 @@ Options:
 
 		catFile(repo, oid)
 	}
-}
-
-func discoverRepository() (*git.Repository, error) {
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	data, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-
-	path := strings.Trim(string(data), "\n ")
-	return &git.Repository{Path: path}, nil
 }
 
 func revParse(repo *git.Repository, refstr string) {
