@@ -205,10 +205,6 @@ func (d *Delta) Patch(r io.ReadSeeker, w io.Writer) error {
 	return nil
 }
 
-type idResolver interface {
-	FindOffset(SHA1) (int64, error)
-}
-
 type deltaChain struct {
 	baseObj gitObject
 	baseOff int64
