@@ -8,6 +8,8 @@ import (
 	"os"
 )
 
+//Delta represents a git delta representation. Either BaseRef
+//or BaseOff are valid fields, depending on its Type().
 type Delta struct {
 	gitObject
 
@@ -122,27 +124,37 @@ func readVarint(r io.Reader) (int64, error) {
 	return size, nil
 }
 
+//DeltaOpCode is the operation code for delta compression
+//instruction set.
 type DeltaOpCode byte
 
+//DeltaOpCode values.
 const (
-	DeltaOpInsert = 1
-	DeltaOpCopy   = 2
+	DeltaOpInsert = 1 //insert data from the delta data into dest
+	DeltaOpCopy   = 2 //copy data from the original source into dest
 )
 
+//DeltaOp represents the delta compression operation. Offset is
+//only valid for DeltaOpCopy operations.
 type DeltaOp struct {
 	Op     DeltaOpCode
 	Size   int64
 	Offset int64
 }
 
+//Op returns the current operations
 func (d *Delta) Op() DeltaOp {
 	return d.op
 }
 
+//Err retrieves the current error state, if any
 func (d *Delta) Err() error {
 	return d.err
 }
 
+//NextOp reads the next DeltaOp from the delta data stream.
+//Returns false when there are no operations left or on error;
+//use Err() to decide between the two cases.
 func (d *Delta) NextOp() (ok bool) {
 	var b [1]byte
 	_, err := d.source.Read(b[:])
@@ -179,6 +191,7 @@ func (d *Delta) NextOp() (ok bool) {
 	return
 }
 
+//Patch applies the delta data onto r and writes the result to w.
 func (d *Delta) Patch(r io.ReadSeeker, w io.Writer) error {
 
 	for d.NextOp() {
