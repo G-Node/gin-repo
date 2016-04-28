@@ -128,7 +128,7 @@ func (repo *Repository) OpenObject(id SHA1) (Object, error) {
 	//TODO: check depth, and especially expected memory usage
 	// beofre actually patching it
 
-	return patchDelta(chain)
+	return chain.patchDelta()
 }
 
 func (repo *Repository) openRawObject(id SHA1) (gitObject, error) {

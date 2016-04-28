@@ -212,8 +212,8 @@ type deltaChain struct {
 	links []Delta
 }
 
-func (d *deltaChain) Len() int {
-	return len(d.links)
+func (c *deltaChain) Len() int {
+	return len(c.links)
 }
 
 type objectSource interface {
@@ -259,7 +259,7 @@ func buildDeltaChain(d *Delta, s objectSource) (*deltaChain, error) {
 	return &chain, nil
 }
 
-func patchDelta(c *deltaChain) (Object, error) {
+func (c *deltaChain) patchDelta() (Object, error) {
 
 	ibuf := bytes.NewBuffer(make([]byte, 0, c.baseObj.Size()))
 	n, err := io.Copy(ibuf, c.baseObj.source)
