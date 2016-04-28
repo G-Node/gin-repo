@@ -108,6 +108,7 @@ func PackIndexOpen(path string) (*PackIndex, error) {
 	return idx, nil
 }
 
+//ReadSHA1 reads the SHA1 stared at position pos (in the FanOut table).
 func (pi *PackIndex) ReadSHA1(chksum *SHA1, pos int) error {
 	if version := pi.Version; version != 2 {
 		return fmt.Errorf("git: v%d version support incomplete", version)
@@ -122,6 +123,8 @@ func (pi *PackIndex) ReadSHA1(chksum *SHA1, pos int) error {
 	return nil
 }
 
+//ReadOffset returns the offset in the pack file of the object
+//at position pos in the FanOut table.
 func (pi *PackIndex) ReadOffset(pos int) (int64, error) {
 	if version := pi.Version; version != 2 {
 		return -1, fmt.Errorf("git: v%d version incomplete", version)
@@ -151,7 +154,7 @@ func (pi *PackIndex) ReadOffset(pos int) (int64, error) {
 	return int64(offset), nil
 }
 
-func (pi *PackIndex) FindSHA1(target SHA1) (int, error) {
+func (pi *PackIndex) findSHA1(target SHA1) (int, error) {
 
 	//s, e and midpoint are one-based indices,
 	//where s is the index before interval and
@@ -182,9 +185,13 @@ func (pi *PackIndex) FindSHA1(target SHA1) (int, error) {
 	return 0, fmt.Errorf("git: sha1 not found in index")
 }
 
+//FindOffset tries to find  object with the id target and if
+//if found returns the offset of the object in the pack file.
+//Returns an error that can be detected by os.IsNotExist if
+//the object could not be found.
 func (pi *PackIndex) FindOffset(target SHA1) (int64, error) {
 
-	pos, err := pi.FindSHA1(target)
+	pos, err := pi.findSHA1(target)
 	if err != nil {
 		return 0, err
 	}
@@ -197,6 +204,7 @@ func (pi *PackIndex) FindOffset(target SHA1) (int64, error) {
 	return off, nil
 }
 
+//OpenPackFile opens the corresponding pack file.
 func (pi *PackIndex) OpenPackFile() (*PackFile, error) {
 	f := pi.Name()
 	pf, err := OpenPackFile(f[:len(f)-4] + ".pack")
