@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"os/user"
@@ -142,51 +141,4 @@ func makeServiceToken() (string, error) {
 
 	str, err := token.SignedString(secret)
 	return str, err
-}
-
-func cmdShell(args map[string]interface{}) {
-	log.SetOutput(os.Stderr)
-
-	argv := splitarg(os.Getenv("SSH_ORIGINAL_COMMAND"))
-	cmd := head(argv)
-
-	if cmd == "" {
-		fmt.Fprintf(os.Stderr, "ERROR: No shell access allowed.")
-		return
-	}
-
-	if _, ok := args["<uid>"]; !ok {
-		log.Fatal("[E] :( (no user)")
-	}
-
-	uid := args["<uid>"].(string)
-	fmt.Fprintf(os.Stderr, "uid: %s\n", uid)
-	fmt.Fprintf(os.Stderr, "cmd: %s %v\n", cmd, argv[1:])
-
-	client := client.NewClient("http://localhost:8888")
-
-	if token, err := makeServiceToken(); err == nil {
-		client.AuthToken = token
-	}
-
-	res := 0
-	switch cmd {
-	case "git-upload-pack":
-		fallthrough
-	case "git-upload-archive":
-		res = gitCommand(client, argv, false, uid)
-
-	case "git-receive-pack":
-		res = gitCommand(client, argv, true, uid)
-
-	case "git-annex-shell":
-		res = gitAnnex(client, argv, uid)
-
-	default:
-		fmt.Fprintf(os.Stderr, "[E] unhandled command: %s\n", cmd)
-		res = 23
-	}
-
-	os.Exit(res)
-
 }
