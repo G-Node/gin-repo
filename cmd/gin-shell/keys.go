@@ -29,7 +29,7 @@ func cmdKeysList(args map[string]interface{}, keys map[string]ssh.Key) {
 	}
 }
 
-func cmdKeysSSHd(fingerprint string, keys map[string]ssh.Key) {
+func cmdKeysSSHd(fingerprint string) {
 	client := client.NewClient("http://localhost:8888")
 
 	if token, err := makeServiceToken(); err == nil {
@@ -76,7 +76,7 @@ func cmdKeys(args map[string]interface{}) {
 		cmdKeysList(args, keys)
 	} else if val, ok := args["sshd"]; ok && val.(bool) {
 		fingerprint := args["<fingerprint>"].(string)
-		cmdKeysSSHd(fingerprint, keys)
+		cmdKeysSSHd(fingerprint)
 	} else {
 		os.Exit(-11)
 	}
