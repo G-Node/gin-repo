@@ -33,22 +33,11 @@ func cmdKeysSSHd(fingerprint string) {
 		out := bytes.NewBufferString("no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty,")
 		out.WriteString("command=\"")
 		out.WriteString(path)
-		out.WriteString(" shell ")
+		out.WriteString(" ")
 		out.WriteString(user.Uid)
 		out.WriteString("\" ")
 		out.Write(key.Keydata)
 
 		os.Stdout.Write(out.Bytes())
 	}
-}
-
-func cmdKeys(args map[string]interface{}) {
-
-	if val, ok := args["sshd"]; ok && val.(bool) {
-		fingerprint := args["<fingerprint>"].(string)
-		cmdKeysSSHd(fingerprint)
-	} else {
-		os.Exit(-11)
-	}
-
 }
