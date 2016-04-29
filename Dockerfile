@@ -28,8 +28,8 @@ RUN go get "github.com/docopt/docopt-go"
 RUN go get "github.com/gorilla/mux"
 RUN go get "github.com/dgrijalva/jwt-go"
 
-# make gin-repo available in $PATH for ssh connections
-RUN ln -sf $GOPATH/bin/gin-repo /usr/bin/gin-repo
+# make gin-shell available in $PATH for ssh connections
+RUN ln -sf $GOPATH/bin/gin-shell /usr/bin/gin-shell
 
 # setup the ssh deamon
 COPY ./contrib/ssh_host_rsa_key* /etc/ssh/

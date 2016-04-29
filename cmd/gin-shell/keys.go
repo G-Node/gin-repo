@@ -44,10 +44,10 @@ func cmdKeysSSHd(fingerprint string, keys map[string]ssh.Key) {
 	}
 
 	for _, key := range user.Keys {
-		path, err := exec.LookPath("gin-repo")
+		path, err := exec.LookPath("gin-shell")
 
 		if err != nil {
-			path = "/gin-repo"
+			path = "/gin-shell"
 		}
 
 		out := bytes.NewBufferString("no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty,")

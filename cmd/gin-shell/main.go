@@ -5,22 +5,22 @@ import (
 )
 
 func main() {
-	usage := `gin repo tool.
+	usage := `gin shell.
 
 Usage:
-  gin-repo keys list [--fingerprint=<fingerprint>]
-  gin-repo keys sshd <fingerprint>
+  gin-shell keys list [--fingerprint=<fingerprint>]
+  gin-shell keys sshd <fingerprint>
   
-  gin-repo shell <uid>
+  gin-shell shell <uid>
 
-  gin-repo -h | --help
-  gin-repo --version
+  gin-shell -h | --help
+  gin-shell --version
 
 Options:
   -h --help     Show this screen.
   --version     Show version.
 `
-	args, _ := docopt.Parse(usage, nil, true, "gin repo 0.1a", false)
+	args, _ := docopt.Parse(usage, nil, true, "gin shell 0.1a", false)
 
 	if val, ok := args["keys"]; ok && val.(bool) {
 		cmdKeys(args)
