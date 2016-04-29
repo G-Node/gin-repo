@@ -346,7 +346,7 @@ func (pf *PackFile) OpenObject(offset int64) (Object, error) {
 		return parseDelta(obj)
 
 	default:
-		return &obj, nil
+		return nil, fmt.Errorf("git: unknown object type")
 	}
 }
 
