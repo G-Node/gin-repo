@@ -28,9 +28,15 @@ Options:
 
 	log.SetOutput(os.Stderr)
 
+	client := client.NewClient("http://localhost:8888")
+
+	if token, err := makeServiceToken(); err == nil {
+		client.AuthToken = token
+	}
+
 	if val, ok := args["--keys"]; ok && val.(bool) {
 		fingerprint := args["<fingerprint>"].(string)
-		ret := cmdKeysSSHd(fingerprint)
+		ret := cmdKeysSSHd(client, fingerprint)
 		os.Exit(ret)
 	}
 
@@ -49,12 +55,6 @@ Options:
 	uid := args["<uid>"].(string)
 	fmt.Fprintf(os.Stderr, "uid: %s\n", uid)
 	fmt.Fprintf(os.Stderr, "cmd: %s %v\n", cmd, argv[1:])
-
-	client := client.NewClient("http://localhost:8888")
-
-	if token, err := makeServiceToken(); err == nil {
-		client.AuthToken = token
-	}
 
 	res := 0
 	switch cmd {

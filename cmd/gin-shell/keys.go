@@ -9,12 +9,7 @@ import (
 	"github.com/G-Node/gin-repo/client"
 )
 
-func cmdKeysSSHd(fingerprint string) int {
-	client := client.NewClient("http://localhost:8888")
-
-	if token, err := makeServiceToken(); err == nil {
-		client.AuthToken = token
-	}
+func cmdKeysSSHd(client *client.Client, fingerprint string) int {
 
 	user, err := client.LookupUserByFingerprint(fingerprint)
 
