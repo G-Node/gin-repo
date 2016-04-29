@@ -7,27 +7,7 @@ import (
 	"os/exec"
 
 	"github.com/G-Node/gin-repo/client"
-	"github.com/G-Node/gin-repo/ssh"
 )
-
-func cmdKeysList(args map[string]interface{}, keys map[string]ssh.Key) {
-	if fingerprint := args["--fingerprint"]; fingerprint != nil {
-		if key, ok := keys[fingerprint.(string)]; ok {
-
-			uid := key.Comment
-
-			fmt.Printf("%s: %s [%s]\n", uid, key.Keysize, key.Fingerprint)
-			fmt.Printf("%s: [%s]\n", uid, string(key.Keydata))
-		}
-	} else {
-		for _, key := range keys {
-			uid := key.Comment
-
-			fmt.Printf("%s: %s [%s]\n", uid, key.Keysize, key.Fingerprint)
-			fmt.Printf("%s: [%s]\n", uid, string(key.Keydata))
-		}
-	}
-}
 
 func cmdKeysSSHd(fingerprint string) {
 	client := client.NewClient("http://localhost:8888")
@@ -64,17 +44,7 @@ func cmdKeysSSHd(fingerprint string) {
 
 func cmdKeys(args map[string]interface{}) {
 
-	dir := os.Getenv("GIN_REPO_KEYDIR")
-
-	if dir == "" {
-		dir = "."
-	}
-
-	keys := ssh.ReadKeysInDir(dir)
-
-	if val, ok := args["list"]; ok && val.(bool) {
-		cmdKeysList(args, keys)
-	} else if val, ok := args["sshd"]; ok && val.(bool) {
+	if val, ok := args["sshd"]; ok && val.(bool) {
 		fingerprint := args["<fingerprint>"].(string)
 		cmdKeysSSHd(fingerprint)
 	} else {

@@ -8,7 +8,6 @@ func main() {
 	usage := `gin shell.
 
 Usage:
-  gin-shell keys list [--fingerprint=<fingerprint>]
   gin-shell keys sshd <fingerprint>
   
   gin-shell shell <uid>
