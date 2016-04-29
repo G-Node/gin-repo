@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/docopt/docopt-go"
 )
 
@@ -23,8 +25,8 @@ Options:
 
 	if val, ok := args["--keys"]; ok && val.(bool) {
 		fingerprint := args["<fingerprint>"].(string)
-		cmdKeysSSHd(fingerprint)
-		return
+		ret := cmdKeysSSHd(fingerprint)
+		os.Exit(ret)
 	}
 
 	cmdShell(args)

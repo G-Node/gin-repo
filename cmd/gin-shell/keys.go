@@ -9,7 +9,7 @@ import (
 	"github.com/G-Node/gin-repo/client"
 )
 
-func cmdKeysSSHd(fingerprint string) {
+func cmdKeysSSHd(fingerprint string) int {
 	client := client.NewClient("http://localhost:8888")
 
 	if token, err := makeServiceToken(); err == nil {
@@ -20,7 +20,7 @@ func cmdKeysSSHd(fingerprint string) {
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "No key found: %v", err)
-		os.Exit(-10)
+		return -10
 	}
 
 	for _, key := range user.Keys {
@@ -40,4 +40,6 @@ func cmdKeysSSHd(fingerprint string) {
 
 		os.Stdout.Write(out.Bytes())
 	}
+
+	return 0
 }
