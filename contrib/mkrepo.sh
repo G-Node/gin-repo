@@ -27,6 +27,15 @@ git commit -m "Add data.zip (annexed)"
 # make a tag, that has a slash in it
 git tag -a -m "Tag as paper/jossa" paper/jossa
 
+# make a topic branch and merge it with --no-ff
+git checkout -b topic
+git add paper.sh
+git commit -m "Add paper.sh script"
+
+git checkout master
+git merge -m "merge topic branch" --no-ff topic
+git branch -d topic
+
 popd
 
 git clone --bare "$NAME" "$NAME.git"
