@@ -220,7 +220,9 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		out.WriteString("{")
 		out.WriteString(fmt.Sprintf("%q: %q,\n", "type", "commit"))
 		out.WriteString(fmt.Sprintf("%q: %q,\n", "tree", obj.Tree))
-		out.WriteString(fmt.Sprintf("%q: %q,\n", "parent", obj.Parent))
+		for _, parent := range obj.Parent {
+			out.WriteString(fmt.Sprintf("%q: %q,\n", "parent", parent))
+		}
 		out.WriteString(fmt.Sprintf("%q: %q,\n", "author", obj.Author))
 		out.WriteString(fmt.Sprintf("%q: %q,\n", "commiter", obj.Committer))
 		out.WriteString(fmt.Sprintf("%q: %q", "message", obj.Message))
