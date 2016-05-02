@@ -53,7 +53,7 @@ func TestRepoBasic(t *testing.T) {
 
 	ok = IsBareRepository("/NONEXISTATNREPOHOPEFULLY")
 	if ok {
-		t.Fatalf("Bare repo check succeed for %q, but shouldn't!")
+		t.Fatalf("Bare repo check succeed for '/NONEXISTATNREPOHOPEFULLY', but shouldn't!")
 	}
 
 	rf, err := OpenRepository("/NONEXISTATNREPOHOPEFULLY")
@@ -77,7 +77,7 @@ func TestRepoBasic(t *testing.T) {
 	err = exec.Command("rm", "-rf", repo.Path).Run()
 
 	if err != nil {
-		t.Log("[W] Could not remove test git dir: %q", repo.Path)
+		t.Logf("[W] Could not remove test git dir: %q", repo.Path)
 	}
 }
 
@@ -108,6 +108,6 @@ func TestRepoAnnexBasic(t *testing.T) {
 	err = exec.Command("rm", "-rf", repo.Path).Run()
 
 	if err != nil {
-		t.Log("[W] Could not remove test git dir: %q", repo.Path)
+		t.Logf("[W] Could not remove test git dir: %q", repo.Path)
 	}
 }
