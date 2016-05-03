@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 )
 
 //SHA1 is the object identifying checksum of
@@ -30,6 +31,20 @@ func ParseSHA1(input string) (sha SHA1, err error) {
 
 	copy(sha[:], data)
 	return
+}
+
+//Signature is a combination of who (Name, Email) and when (Date, Offset).
+//Used by Commit, Tag to link an action (committer, author, tagger, ...)
+//with a person in a point in time.
+type Signature struct {
+	Name   string
+	Email  string
+	Date   time.Time
+	Offset *time.Location
+}
+
+func (s Signature) String() string {
+	return fmt.Sprintf("%s <%s> %d %s", s.Name, s.Email, s.Date.Unix(), s.Offset)
 }
 
 //ObjectType is to the git object type
