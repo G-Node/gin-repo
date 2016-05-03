@@ -150,6 +150,11 @@ type Commit struct {
 	Message   string
 }
 
+//Date returns the commit timestamps (with the correct location).
+func (c *Commit) Date() time.Time {
+	return c.Committer.Date.In(c.Committer.Offset)
+}
+
 //Tree represents the git tree object.
 type Tree struct {
 	gitObject
