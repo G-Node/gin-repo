@@ -145,8 +145,8 @@ type Commit struct {
 
 	Tree      SHA1
 	Parent    []SHA1
-	Author    string
-	Committer string
+	Author    Signature
+	Committer Signature
 	Message   string
 }
 

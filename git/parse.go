@@ -139,9 +139,9 @@ func parseCommit(obj gitObject) (*Commit, error) {
 				c.Parent = append(c.Parent, parent)
 			}
 		case "author":
-			c.Author = strings.Trim(tail, "\n")
+			c.Author, err = parseSignature(strings.Trim(tail, "\n"))
 		case "committer":
-			c.Committer = strings.Trim(tail, "\n")
+			c.Committer, err = parseSignature(strings.Trim(tail, "\n"))
 		}
 
 		if err != nil || head == "\n" {
