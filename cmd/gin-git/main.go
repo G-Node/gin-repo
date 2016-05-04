@@ -149,7 +149,9 @@ func printObject(obj git.Object, prefix string) {
 	case *git.Commit:
 		fmt.Printf("Commit [%v]\n", obj.Size())
 		fmt.Printf("%s └┬─ tree:      %s\n", prefix, obj.Tree)
-		fmt.Printf("%s  ├─ parent:    %s\n", prefix, obj.Parent)
+		for _, parent := range obj.Parent {
+			fmt.Printf("%s  ├─ parent:    %s\n", prefix, parent)
+		}
 		fmt.Printf("%s  ├─ author:    %s\n", prefix, obj.Author)
 		fmt.Printf("%s  ├─ committer: %s\n", prefix, obj.Committer)
 		fmt.Printf("%s  └─ message:   [%.40s...]\n", prefix, obj.Message)

@@ -129,7 +129,7 @@ type Commit struct {
 	gitObject
 
 	Tree      SHA1
-	Parent    SHA1
+	Parent    []SHA1
 	Author    string
 	Committer string
 	Message   string

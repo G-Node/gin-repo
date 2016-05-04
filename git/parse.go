@@ -85,7 +85,10 @@ func parseCommit(obj gitObject) (*Commit, error) {
 		case "tree":
 			c.Tree, err = ParseSHA1(tail)
 		case "parent":
-			c.Parent, err = ParseSHA1(tail)
+			parent, err := ParseSHA1(tail)
+			if err == nil {
+				c.Parent = append(c.Parent, parent)
+			}
 		case "author":
 			c.Author = strings.Trim(tail, "\n")
 		case "committer":
