@@ -100,16 +100,24 @@ func (ot ObjectType) String() string {
 	return "unknown"
 }
 
+//IsStandardObject checks if an object is
+//one of the four common objects such as
+//commit, tree, blob, tag.
 func IsStandardObject(ot ObjectType) bool {
 	return ot > 0 && ot < 5
 }
 
+//IsDeltaObject checks if an object is a
+//delta object, i.e. OFSDelta or RefDelta
 func IsDeltaObject(ot ObjectType) bool {
 	return ot == ObjOFSDelta || ot == ObjRefDelta
 }
 
-//Object holds information common to
-//all git objects like their type and size.
+//Object represents a git object. It has
+//information common to all git objects,
+//like their type and their size. Also,
+//all git objects should be closed via
+//Close().
 type Object interface {
 	Type() ObjectType
 	Size() int64
