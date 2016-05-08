@@ -60,7 +60,7 @@ const (
 	ObjTag
 
 	ObjOFSDelta = ObjectType(0x6)
-	OBjRefDelta = ObjectType(0x7)
+	ObjRefDelta = ObjectType(0x7)
 )
 
 //ParseObjectType takes a string and converts it
@@ -94,7 +94,7 @@ func (ot ObjectType) String() string {
 		return "tag"
 	case ObjOFSDelta:
 		return "delta-ofs"
-	case OBjRefDelta:
+	case ObjRefDelta:
 		return "delta-ref"
 	}
 	return "unknown"
@@ -105,7 +105,7 @@ func IsStandardObject(ot ObjectType) bool {
 }
 
 func IsDeltaObject(ot ObjectType) bool {
-	return ot == ObjOFSDelta || ot == OBjRefDelta
+	return ot == ObjOFSDelta || ot == ObjRefDelta
 }
 
 //Object holds information common to

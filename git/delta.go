@@ -27,7 +27,7 @@ func parseDelta(obj gitObject) (*Delta, error) {
 	delta := Delta{gitObject: obj}
 
 	var err error
-	if obj.otype == OBjRefDelta {
+	if obj.otype == ObjRefDelta {
 		_, err = delta.source.Read(delta.BaseRef[:])
 		//TODO: check n?
 
@@ -242,7 +242,7 @@ func buildDeltaChain(d *Delta, s objectSource) (*deltaChain, error) {
 		chain.links = append(chain.links, *d)
 
 		var obj gitObject
-		if d.otype == OBjRefDelta {
+		if d.otype == ObjRefDelta {
 			obj, err = s.openRawObject(d.BaseRef)
 		} else {
 			obj, err = d.pf.readRawObject(d.BaseOff)
