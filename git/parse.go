@@ -9,7 +9,56 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
+
+func parseSignature(line string) (Signature, error) {
+	//Format: "<name> <email> <unix timestamp> <time zone offset>"
+	//i.e. "A U Thor <author@example.com> 1462210432 +0200"
+
+	u := Signature{}
+
+	//<name>
+	start := strings.Index(line, " <")
+	if start == -1 {
+		return u, fmt.Errorf("invalid signature format")
+	}
+	u.Name = line[:start]
+
+	//<email>
+	end := strings.Index(line, "> ")
+	if end == -1 {
+		return u, fmt.Errorf("invalid signature format")
+	}
+	u.Email = line[start+2 : end]
+
+	//<unix timestamp>
+	tstr, off := split2(line[end+2:], " ")
+	i, err := strconv.ParseInt(tstr, 10, 64)
+
+	if err != nil || len(off) != 5 {
+		return u, fmt.Errorf("invalid signature time format")
+	}
+	u.Date = time.Unix(i, 0)
+
+	//<time zone offset>
+	h, herr := strconv.Atoi(off[1:3])
+	m, merr := strconv.Atoi(off[3:])
+
+	if herr != nil || merr != nil {
+		return u, fmt.Errorf("invalid signature offset format")
+	}
+
+	o := (h*60 + m) * 60
+
+	if off[0] == '-' {
+		o *= -1
+	}
+
+	u.Offset = time.FixedZone(off, o)
+
+	return u, nil
+}
 
 func openRawObject(path string) (gitObject, error) {
 	fd, err := os.Open(path)
@@ -90,9 +139,9 @@ func parseCommit(obj gitObject) (*Commit, error) {
 				c.Parent = append(c.Parent, parent)
 			}
 		case "author":
-			c.Author = strings.Trim(tail, "\n")
+			c.Author, err = parseSignature(strings.Trim(tail, "\n"))
 		case "committer":
-			c.Committer = strings.Trim(tail, "\n")
+			c.Committer, err = parseSignature(strings.Trim(tail, "\n"))
 		}
 
 		if err != nil || head == "\n" {

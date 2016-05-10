@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 )
 
 //SHA1 is the object identifying checksum of
@@ -32,6 +33,20 @@ func ParseSHA1(input string) (sha SHA1, err error) {
 	return
 }
 
+//Signature is a combination of who (Name, Email) and when (Date, Offset).
+//Used by Commit, Tag to link an action (committer, author, tagger, ...)
+//with a person in a point in time.
+type Signature struct {
+	Name   string
+	Email  string
+	Date   time.Time
+	Offset *time.Location
+}
+
+func (s Signature) String() string {
+	return fmt.Sprintf("%s <%s> %d %s", s.Name, s.Email, s.Date.Unix(), s.Offset)
+}
+
 //ObjectType is to the git object type
 type ObjectType byte
 
@@ -45,7 +60,7 @@ const (
 	ObjTag
 
 	ObjOFSDelta = ObjectType(0x6)
-	OBjRefDelta = ObjectType(0x7)
+	ObjRefDelta = ObjectType(0x7)
 )
 
 //ParseObjectType takes a string and converts it
@@ -79,22 +94,30 @@ func (ot ObjectType) String() string {
 		return "tag"
 	case ObjOFSDelta:
 		return "delta-ofs"
-	case OBjRefDelta:
+	case ObjRefDelta:
 		return "delta-ref"
 	}
 	return "unknown"
 }
 
+//IsStandardObject checks if an object is
+//one of the four common objects such as
+//commit, tree, blob, tag.
 func IsStandardObject(ot ObjectType) bool {
 	return ot > 0 && ot < 5
 }
 
+//IsDeltaObject checks if an object is a
+//delta object, i.e. OFSDelta or RefDelta
 func IsDeltaObject(ot ObjectType) bool {
-	return ot == ObjOFSDelta || ot == OBjRefDelta
+	return ot == ObjOFSDelta || ot == ObjRefDelta
 }
 
-//Object holds information common to
-//all git objects like their type and size.
+//Object represents a git object. It has
+//information common to all git objects,
+//like their type and their size. Also,
+//all git objects should be closed via
+//Close().
 type Object interface {
 	Type() ObjectType
 	Size() int64
@@ -130,9 +153,14 @@ type Commit struct {
 
 	Tree      SHA1
 	Parent    []SHA1
-	Author    string
-	Committer string
+	Author    Signature
+	Committer Signature
 	Message   string
+}
+
+//Date returns the commit timestamps (with the correct location).
+func (c *Commit) Date() time.Time {
+	return c.Committer.Date.In(c.Committer.Offset)
 }
 
 //Tree represents the git tree object.

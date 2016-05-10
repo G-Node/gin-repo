@@ -342,7 +342,7 @@ func (pf *PackFile) OpenObject(offset int64) (Object, error) {
 
 	case ObjOFSDelta:
 		fallthrough
-	case OBjRefDelta:
+	case ObjRefDelta:
 		return parseDelta(obj)
 
 	default:
