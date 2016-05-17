@@ -73,6 +73,21 @@ func (c *CommitGraph) AddTip(oid SHA1) (*CommitNode, error) {
 	return node, nil
 }
 
+func (c *CommitGraph) loadParents(node *CommitNode) error {
+	if len(node.parents) != len(node.commit.Parent) {
+		node.parents = make([]*CommitNode, len(node.commit.Parent))
+		for i, parent := range node.commit.Parent {
+			var err error
+			node.parents[i], err = c.openObject(parent)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 //youngestFirst is a priority queue implemented via a 'container/heap'
 //the latter is a min-heap, which nicely aligns with times in epoch
 type youngestFirst []*CommitNode
@@ -134,15 +149,9 @@ func (c *CommitGraph) PaintDownToCommon() error {
 			flags |= NodeColorBlue
 		}
 
-		if len(node.parents) != len(node.commit.Parent) {
-			node.parents = make([]*CommitNode, len(node.commit.Parent))
-			for i, parent := range node.commit.Parent {
-				var err error
-				node.parents[i], err = c.openObject(parent)
-				if err != nil {
-					return err
-				}
-			}
+		err := c.loadParents(node)
+		if err != nil {
+			return err
 		}
 
 		for _, parent := range node.parents {
