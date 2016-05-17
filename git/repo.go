@@ -14,10 +14,12 @@ import (
 	"time"
 )
 
+//Repository represents an on disk git repository.
 type Repository struct {
 	Path string
 }
 
+//InitBareRepository creates a bare git repository at path.
 func InitBareRepository(path string) (*Repository, error) {
 
 	path, err := filepath.Abs(path)
@@ -35,6 +37,7 @@ func InitBareRepository(path string) (*Repository, error) {
 	return &Repository{Path: path}, nil
 }
 
+//IsBareRepository checks if path is a bare git repository.
 func IsBareRepository(path string) bool {
 
 	cmd := exec.Command("git", fmt.Sprintf("--git-dir=%s", path), "rev-parse", "--is-bare-repository")
@@ -48,6 +51,9 @@ func IsBareRepository(path string) bool {
 	return status == "true"
 }
 
+//OpenRepository opens the repository at path. Currently
+//verifies that it is a (bare) repository and returns an
+//error if the check fails.
 func OpenRepository(path string) (*Repository, error) {
 
 	path, err := filepath.Abs(path)
@@ -76,6 +82,7 @@ func DiscoverRepository() (*Repository, error) {
 	return &Repository{Path: path}, nil
 }
 
+//ReadDescription returns the contents of the description file.
 func (repo *Repository) ReadDescription() string {
 	path := filepath.Join(repo.Path, "description")
 
@@ -87,6 +94,7 @@ func (repo *Repository) ReadDescription() string {
 	return string(dat)
 }
 
+//WriteDescription writes the contents of the description file.
 func (repo *Repository) WriteDescription(description string) error {
 	path := filepath.Join(repo.Path, "description")
 
@@ -94,12 +102,14 @@ func (repo *Repository) WriteDescription(description string) error {
 	return ioutil.WriteFile(path, []byte(description), 0666)
 }
 
+//HasAnnex returns true if the repository has git-annex initialized.
 func (repo *Repository) HasAnnex() bool {
 	d := filepath.Join(repo.Path, "annex")
 	s, err := os.Stat(d)
 	return err == nil && s.IsDir()
 }
 
+//InitAnnex initializes git-annex support for a repository.
 func (repo *Repository) InitAnnex() error {
 	cmd := exec.Command("git", fmt.Sprintf("--git-dir=%s", repo.Path), "annex", "init", "gin")
 	body, err := cmd.Output()
@@ -111,6 +121,7 @@ func (repo *Repository) InitAnnex() error {
 	return nil
 }
 
+//OpenObject returns the git object for a give id (SHA1).
 func (repo *Repository) OpenObject(id SHA1) (Object, error) {
 	obj, err := repo.openRawObject(id)
 
