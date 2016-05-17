@@ -106,6 +106,15 @@ func (y *youngestFirst) Pop() interface{} {
 	return r
 }
 
+func (y youngestFirst) notAllWhite() bool {
+	for _, node := range y {
+		if node.Flags&NodeColorWhite != NodeColorWhite {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *CommitGraph) PaintDownToCommon() error {
 
 	//initialize the priority queue with the tips
@@ -117,16 +126,7 @@ func (c *CommitGraph) PaintDownToCommon() error {
 
 	heap.Init(&pq)
 
-	notallwhite := func(y youngestFirst) bool {
-		for _, node := range y {
-			if node.Flags&NodeColorWhite != NodeColorWhite {
-				return true
-			}
-		}
-		return false
-	}
-
-	for notallwhite(pq) {
+	for pq.notAllWhite() {
 		node := heap.Pop(&pq).(*CommitNode)
 
 		flags := node.Flags
