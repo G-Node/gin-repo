@@ -19,6 +19,7 @@ Usage:
   gin-git show-delta <pack> <sha1>
   gin-git cat-file <sha1>
   gin-git rev-parse <ref>
+  gin-git graph-common <base> <ref>
  
   gin-git -h | --help
   gin-git --version
@@ -43,8 +44,9 @@ Options:
 	} else if val, ok := args["show-delta"].(bool); ok && val {
 		showDelta(repo, args["<pack>"].(string), args["<sha1>"].(string))
 	} else if oid, ok := args["<sha1>"].(string); ok {
-
 		catFile(repo, oid)
+	} else if val, ok := args["graph-common"].(bool); ok && val {
+		graphCommon(repo, args["<base>"].(string), args["<ref>"].(string))
 	}
 }
 
@@ -276,5 +278,64 @@ func showPack(repo *git.Repository, packid string) {
 		}
 
 	}
+}
 
+func graphCommon(repo *git.Repository, basestr, refstr string) {
+	baseid, err := git.ParseSHA1(basestr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid object id: %v", err)
+		os.Exit(1)
+	}
+
+	refid, err := git.ParseSHA1(refstr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid object id: %v", err)
+		os.Exit(1)
+	}
+
+	cg := git.NewCommitGraph(repo)
+	base, err := cg.AddTip(baseid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not add tip: %v", err)
+		os.Exit(2)
+	}
+	base.Flags = git.NodeColorRed
+
+	ref, err := cg.AddTip(refid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not add tip: %v", err)
+		os.Exit(2)
+	}
+	ref.Flags = git.NodeColorGreen
+
+	err = cg.PaintDownToCommon()
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error building graph: %v", err)
+		os.Exit(10)
+	}
+
+	fmt.Printf("digraph g1 {\n")
+	q := []*git.CommitNode{base, ref}
+
+	for len(q) != 0 {
+		node := q[0]
+		q = q[1:]
+
+		if node.Flags&git.NodeFlagSeen != 0 {
+			continue
+		}
+
+		fmt.Printf("%q [label=\"%.7[1]s (%d)\"];\n",
+			node.ID, node.Flags&git.NodeColorWhite)
+
+		node.Flags |= git.NodeFlagSeen
+
+		for _, parent := range node.Parents() {
+			q = append(q, parent)
+			fmt.Printf("%q -> %q;\n", node.ID, parent.ID)
+		}
+	}
+
+	fmt.Printf("}\n")
 }
