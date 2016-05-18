@@ -111,13 +111,21 @@ func readVarint(r io.Reader) (int64, error) {
 	size := int64(b[0] & 0x7F)
 
 	for b[0]&0x80 != 0 {
-		//TODO: overflow check
 		_, err := r.Read(b)
 		if err != nil {
 			return 0, fmt.Errorf("git: io error: %v", err)
 		}
 
 		size++
+
+		// [0000 0001 ... 0000] (int64)
+		//          ^ bit 0x38 (56)
+		// shifting by 7 will shift the bit into the
+		// sign bit of int64, i.e. we have overflow.
+		if size > (1<<0x38)-1 {
+			return 0, fmt.Errorf("int64 overflow")
+		}
+
 		size = (size << 7) + int64(b[0]&0x7F)
 	}
 
