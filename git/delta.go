@@ -70,14 +70,21 @@ func readDeltaSize(r io.Reader) (int64, error) {
 	size := int64(0)
 	b[0] = 0x80
 
-	for i := uint(0); b[0]&0x80 != 0; i += 7 {
-		//TODO: overflow check
+	// [0111 1111 ... 1111] (int64) is biggest decode-able
+	// value we get by shifting byte b = 0x7F [0111 1111]
+	// left 8*7 = 56 times; the next attempt must overflow.
+	for i := uint(0); b[0]&0x80 != 0 && i < 57; i += 7 {
 		_, err := r.Read(b)
 		if err != nil {
 			return 0, fmt.Errorf("git: io error: %v", err)
 		}
 
 		size |= int64(b[0]&0x7F) << i
+	}
+
+	// means i > 56, would overflow (see above).
+	if b[0]&0x80 != 0 {
+		return 0, fmt.Errorf("int64 overflow")
 	}
 
 	return size, nil
