@@ -58,27 +58,27 @@ var dstest = []IntDecTest{
 	{[]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01}, 0, true}, // overflow
 }
 
-func TestReadDeltaSize(t *testing.T) {
+func TestReadVarSize(t *testing.T) {
 	for _, tt := range dstest {
 		r := bytes.NewReader(tt.in)
-		out, err := readDeltaSize(r)
+		out, err := readVarSize(r)
 
 		switch {
 		case err == nil && tt.err:
-			t.Errorf("readDeltaSize(%#v) => %d, wanted overflow error", tt.in, out)
+			t.Errorf("readVarSize(%#v) => %d, wanted overflow error", tt.in, out)
 
 		case err != nil && !tt.err:
-			t.Errorf("readDeltaSize(%#v) => error: %v, wanted %d", tt.in, err, tt.out)
+			t.Errorf("readVarSize(%#v) => error: %v, wanted %d", tt.in, err, tt.out)
 
 		//Not an error condition
 		case err != nil && tt.err:
-			t.Logf("readDeltaSize(%#v) => error %v [OK!]", tt.in, err)
+			t.Logf("readVarSize(%#v) => error %v [OK!]", tt.in, err)
 
 		case out != tt.out: // err == nil && !tt.err, i.e. results must match
-			t.Errorf("readDeltaSize(%#v) => %d, wanted %d", tt.in, out, tt.out)
+			t.Errorf("readVarSize(%#v) => %d, wanted %d", tt.in, out, tt.out)
 
 		default:
-			t.Logf("readDeltaSize(%#v) => %d [OK!]", tt.in, out)
+			t.Logf("readVarSize(%#v) => %d [OK!]", tt.in, out)
 		}
 	}
 }

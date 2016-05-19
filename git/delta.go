@@ -54,12 +54,12 @@ func parseDelta(obj gitObject) (*Delta, error) {
 		return nil, err
 	}
 
-	delta.SizeSource, err = readDeltaSize(delta.source)
+	delta.SizeSource, err = readVarSize(delta.source)
 	if err != nil {
 		return nil, err
 	}
 
-	delta.SizeTarget, err = readDeltaSize(delta.source)
+	delta.SizeTarget, err = readVarSize(delta.source)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func parseDelta(obj gitObject) (*Delta, error) {
 	return &delta, nil
 }
 
-func readDeltaSize(r io.Reader) (int64, error) {
+func readVarSize(r io.Reader) (int64, error) {
 	b := make([]byte, 1)
 	size := int64(0)
 	b[0] = 0x80
