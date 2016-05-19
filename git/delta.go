@@ -26,9 +26,14 @@ type Delta struct {
 func parseDelta(obj gitObject) (*Delta, error) {
 	delta := Delta{gitObject: obj}
 
+	//all delta objects come from a PackFile and
+	//therefore git.Source is must be a *packReader
+	source := delta.source.(*packReader)
+	delta.pf = source.fd
+
 	var err error
 	if obj.otype == ObjRefDelta {
-		_, err = delta.source.Read(delta.BaseRef[:])
+		_, err = source.Read(delta.BaseRef[:])
 		//TODO: check n?
 
 		if err != nil {
@@ -36,16 +41,13 @@ func parseDelta(obj gitObject) (*Delta, error) {
 		}
 
 	} else {
-		off, err := readVarint(delta.source)
+		off, err := readVarint(source)
 		if err != nil {
 			return nil, err
 		}
 
-		r := delta.source.(*packReader)
-		delta.BaseOff = r.start - off
+		delta.BaseOff = source.start - off
 	}
-
-	delta.pf = delta.source.(*packReader).fd
 
 	err = delta.wrapSourceWithDeflate()
 	if err != nil {
