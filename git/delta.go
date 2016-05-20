@@ -54,12 +54,12 @@ func parseDelta(obj gitObject) (*Delta, error) {
 		return nil, err
 	}
 
-	delta.SizeSource, err = readVarSize(delta.source)
+	delta.SizeSource, err = readVarSize(delta.source, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	delta.SizeTarget, err = readVarSize(delta.source)
+	delta.SizeTarget, err = readVarSize(delta.source, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func parseDelta(obj gitObject) (*Delta, error) {
 	return &delta, nil
 }
 
-func readVarSize(r io.Reader) (int64, error) {
+func readVarSize(r io.Reader, offset uint) (int64, error) {
 	b := make([]byte, 1)
 	size := int64(0)
 	b[0] = 0x80
@@ -75,7 +75,7 @@ func readVarSize(r io.Reader) (int64, error) {
 	// [0111 1111 ... 1111] (int64) is biggest decode-able
 	// value we get by shifting byte b = 0x7F [0111 1111]
 	// left 8*7 = 56 times; the next attempt must overflow.
-	for i := uint(0); b[0]&0x80 != 0 && i < 57; i += 7 {
+	for i := offset; b[0]&0x80 != 0 && i < 57; i += 7 {
 		_, err := r.Read(b)
 		if err != nil {
 			return 0, fmt.Errorf("git: io error: %v", err)

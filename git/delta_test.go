@@ -61,7 +61,7 @@ var dstest = []IntDecTest{
 func TestReadVarSize(t *testing.T) {
 	for _, tt := range dstest {
 		r := bytes.NewReader(tt.in)
-		out, err := readVarSize(r)
+		out, err := readVarSize(r, 0)
 
 		switch {
 		case err == nil && tt.err:
