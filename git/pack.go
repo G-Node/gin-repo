@@ -295,19 +295,23 @@ func (pf *PackFile) readRawObject(offset int64) (gitObject, error) {
 		return gitObject{}, fmt.Errorf("git: io error: %v", err)
 	}
 
+	//object header format:
+	//[mxxx tttt] (byte)
+	//      tttt -> type [4 bit]
 	otype := ObjectType((b & 0x70) >> 4)
 
+	//  xxx      -> size [3 bit]
 	size := int64(b & 0xF)
-	for i := 0; b&0x80 != 0; i++ {
-		// TODO: overflow for i > 9
-		b, err = r.ReadByte()
+
+	// m         -> 1, if size > 2^3 (n-byte encoding)
+	if b&0x80 != 0 {
+		s, err := readVarSize(r, 4)
 		if err != nil {
-			return gitObject{}, fmt.Errorf("git io error: %v", err)
+			return gitObject{}, err
 		}
 
-		size += int64(b&0x7F) << uint(4+i*7)
+		size += s
 	}
-
 	obj := gitObject{otype, size, r}
 
 	if IsStandardObject(otype) {
