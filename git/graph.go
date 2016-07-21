@@ -130,9 +130,9 @@ func (y youngestFirst) notAllWhite() bool {
 	return false
 }
 
-func (c *CommitGraph) PaintDownToCommon() error {
-
-	//initialize the priority queue with the tips
+//youngestFirstFromTips creates a priority queue initialized
+//with the tips of the graph.
+func (c *CommitGraph) youngestFirstFromTips() youngestFirst {
 	pq := make(youngestFirst, len(c.tips))
 
 	for i, node := range c.tips {
@@ -140,6 +140,13 @@ func (c *CommitGraph) PaintDownToCommon() error {
 	}
 
 	heap.Init(&pq)
+
+	return pq
+}
+
+func (c *CommitGraph) PaintDownToCommon() error {
+
+	pq := c.youngestFirstFromTips()
 
 	for pq.notAllWhite() {
 		node := heap.Pop(&pq).(*CommitNode)
