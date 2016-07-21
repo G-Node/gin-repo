@@ -316,26 +316,16 @@ func graphCommon(repo *git.Repository, basestr, refstr string) {
 	}
 
 	fmt.Printf("digraph g1 {\n")
-	q := []*git.CommitNode{base, ref}
 
-	for len(q) != 0 {
-		node := q[0]
-		q = q[1:]
-
-		if node.Flags&git.NodeFlagSeen != 0 {
-			continue
-		}
-
+	cg.VisitCommits(func(node *git.CommitNode) bool {
 		fmt.Printf("%q [label=\"%.7[1]s (%d)\"];\n",
 			node.ID, node.Flags&git.NodeColorWhite)
 
-		node.Flags |= git.NodeFlagSeen
-
 		for _, parent := range node.Parents() {
-			q = append(q, parent)
 			fmt.Printf("%q -> %q;\n", node.ID, parent.ID)
 		}
-	}
+		return false
+	})
 
 	fmt.Printf("}\n")
 }
