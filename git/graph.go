@@ -173,3 +173,34 @@ func (c *CommitGraph) PaintDownToCommon() error {
 
 	return nil
 }
+
+type CommitVisitor func(node *CommitNode) bool
+
+func (c *CommitGraph) VisitCommits(fn CommitVisitor) {
+
+	//let's clear all the seen flags so we can use them
+	for _, v := range c.commits {
+		v.Flags &^= NodeFlagSeen
+	}
+
+	pq := c.youngestFirstFromTips()
+
+	for len(pq) != 0 {
+		node := heap.Pop(&pq).(*CommitNode)
+
+		if node.Flags&NodeFlagSeen != 0 {
+			continue
+		}
+		node.Flags |= NodeFlagSeen
+
+		stop := fn(node)
+		if stop {
+			break
+		}
+
+		// ensure commits are loaded?
+		for _, parent := range node.Parents() {
+			heap.Push(&pq, parent)
+		}
+	}
+}
