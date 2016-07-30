@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/docopt/docopt-go"
@@ -128,6 +129,28 @@ func (s *Server) SetupServiceSecret() error {
 	}
 
 	s.log(DEBUG, "Wrote shared secret to %q", path)
+
+	if val := os.Getenv("GIN_REPO_DEBUGTOKEN"); val != "" {
+		token := jwt.New(jwt.SigningMethodHS256)
+
+		host, err := os.Hostname()
+		if err != nil {
+			host = "localhost"
+		}
+
+		token.Claims["iss"] = "gin-repo@" + host
+		token.Claims["iat"] = time.Now().Unix()
+		token.Claims["exp"] = time.Now().Add(time.Minute * 5).Unix()
+		token.Claims["role"] = "service"
+
+		str, err := token.SignedString(s.srvKey)
+
+		if err != nil {
+			s.log(PANIC, "Could not make debug auth token")
+		}
+		s.log(DEBUG, "Token: [%s]", str)
+	}
+
 	return nil
 }
 
