@@ -72,7 +72,7 @@ func (store *UserStore) Setup() error {
 	return nil
 }
 
-func (store *UserStore) lookupUserBySSH(fingerprint string) (*User, error) {
+func (store *UserStore) LookupUserBySSH(fingerprint string) (*User, error) {
 
 	if user, ok := store.key2User[fingerprint]; ok {
 		return user, nil
