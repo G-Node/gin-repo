@@ -7,12 +7,11 @@ import (
 	"net/http"
 	"os"
 
-	. "github.com/G-Node/gin-repo/common"
-	"github.com/G-Node/gin-repo/git"
-	"github.com/G-Node/gin-repo/ssh"
-	"github.com/G-Node/gin-repo/wire"
 	"path/filepath"
 	"strings"
+
+	"github.com/G-Node/gin-repo/git"
+	"github.com/G-Node/gin-repo/wire"
 )
 
 func getRepoDir() string {
@@ -97,36 +96,40 @@ func repoAccess(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-func lookupUser(w http.ResponseWriter, r *http.Request) {
+func (s *Server) lookupUser(w http.ResponseWriter, r *http.Request) {
 	log.Printf("lookupUser: %s @ %s", r.Method, r.URL.String())
 
 	query := r.URL.Query()
 
 	val, ok := query["key"]
 
-	if !ok {
+	if !ok || len(val) != 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	keys := ssh.ReadKeysInDir(getRepoDir())
+	user, err := s.users.LookupUserBySSH(val[0])
+	s.log(DEBUG, "lookupUser: fingerprint %q", val[0])
 
-	if key, ok := keys[val[0]]; ok {
-		user := User{Uid: key.Comment, Keys: []ssh.Key{key}}
-
-		data, err := json.Marshal(user)
-		if err != nil {
+	if err != nil {
+		if os.IsNotExist(err) {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			s.log(PANIC, "lookupUser error: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
-			return
 		}
 
-		_, err = w.Write(data)
-		if err != nil {
-			log.Panicf("[W] %v", err)
-		}
-
-	} else {
-		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 
+	data, err := json.Marshal(user)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write(data)
+	if err != nil {
+		s.log(PANIC, "lookupUser: IO error: %v", err)
+	}
 }
