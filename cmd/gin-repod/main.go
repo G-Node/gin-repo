@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/G-Node/gin-repo/store"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/docopt/docopt-go"
 	"github.com/gorilla/mux"
@@ -22,6 +23,8 @@ type Server struct {
 	Root *mux.Router
 
 	srvKey []byte
+
+	users *store.UserStore
 }
 
 type LogLevel int
@@ -154,6 +157,23 @@ func (s *Server) SetupServiceSecret() error {
 	return nil
 }
 
+func (s *Server) SetupStores() {
+	var err error
+	dir := os.Getenv("GIN_REPO_DIR")
+
+	if dir == "" {
+		dir = "."
+	}
+
+	s.users, err = store.NewUserStore(dir)
+
+	if err != nil {
+		s.log(PANIC, "Could not setup user store: %v", err)
+		os.Exit(11)
+	}
+
+}
+
 func (s *Server) ListenAndServe() error {
 	s.log(INFO, "Listening on %s", s.Addr)
 	err := s.Server.ListenAndServe()
@@ -208,5 +228,6 @@ Options:
 	r.HandleFunc("/users/{user}/repos/{repo}/objects/{object}", s.getObject).Methods("GET")
 
 	s.SetupServiceSecret()
+	s.SetupStores()
 	s.ListenAndServe()
 }
