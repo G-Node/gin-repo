@@ -96,16 +96,19 @@ func repoToWire(repo *git.Repository) (wire.Repo, error) {
 
 	//HEAD must be a symbolic ref
 	symhead := head.(*git.SymbolicRef)
-	target, err := repo.OpenRef(symhead.Symbol)
+	targetName := symhead.Fullname()
 
-	if err != nil {
-		return wire.Repo{}, err
+	//FIXME: git rev-parse based OpenRef doesn't work with
+	// empty repos, workaround: return HEAD
+	target, err := repo.OpenRef(symhead.Symbol)
+	if err == nil {
+		targetName = target.Fullname()
 	}
 
 	wr := wire.Repo{
 		Name:        name,
 		Description: repo.ReadDescription(),
-		Head:        target.Fullname()}
+		Head:        targetName}
 
 	return wr, nil
 }
