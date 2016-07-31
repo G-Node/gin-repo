@@ -53,7 +53,7 @@ func translatePath(vpath string, uid string) string {
 	return path
 }
 
-func repoAccess(w http.ResponseWriter, r *http.Request) {
+func (s *Server) repoAccess(w http.ResponseWriter, r *http.Request) {
 	log.Printf("repoAccess: %s @ %v", r.Method, r.URL.String())
 
 	decoder := json.NewDecoder(r.Body)

@@ -218,7 +218,7 @@ Options:
 	r := s.Root
 
 	r.HandleFunc("/intern/user/lookup", s.lookupUser).Methods("GET")
-	r.HandleFunc("/intern/repos/access", repoAccess).Methods("POST")
+	r.HandleFunc("/intern/repos/access", s.repoAccess).Methods("POST")
 
 	r.HandleFunc("/users/{user}/repos", createRepo).Methods("POST")
 	r.HandleFunc("/users/{user}/repos", s.listRepos).Methods("GET")
