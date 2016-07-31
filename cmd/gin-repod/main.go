@@ -84,7 +84,7 @@ func (s *Server) ServeHTTP(original http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		if role, ok := token.Claims["role"].(string); !ok || role != "service" {
+		if role, ok := token.Claims["role"].(string); !ok || (role != "service" && role != "debug") {
 			s.log(WARN, "Got token without or non-service role")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -111,7 +111,7 @@ func (s *Server) getAuthToken(r *http.Request) (*jwt.Token, error) {
 	})
 }
 
-func (s *Server) SetupServiceSecret() error {
+func (s *Server) createSharedSecret() {
 	s.srvKey = make([]byte, 23)
 	_, err := rand.Read(s.srvKey)
 
@@ -132,6 +132,28 @@ func (s *Server) SetupServiceSecret() error {
 	}
 
 	s.log(DEBUG, "Wrote shared secret to %q", path)
+}
+
+func (s *Server) readSharedSecret() error {
+	path := "gin.secret"
+	data, err := ioutil.ReadFile(path)
+
+	if err != nil {
+		return err
+	}
+
+	s.srvKey = data
+	return nil
+}
+
+func (s *Server) SetupServiceSecret() error {
+
+	err := s.readSharedSecret()
+
+	if err != nil {
+		s.log(DEBUG, "Creating new shared secret")
+		s.createSharedSecret()
+	}
 
 	if val := os.Getenv("GIN_REPO_DEBUGTOKEN"); val != "" {
 		token := jwt.New(jwt.SigningMethodHS256)
@@ -143,8 +165,8 @@ func (s *Server) SetupServiceSecret() error {
 
 		token.Claims["iss"] = "gin-repo@" + host
 		token.Claims["iat"] = time.Now().Unix()
-		token.Claims["exp"] = time.Now().Add(time.Minute * 5).Unix()
-		token.Claims["role"] = "service"
+		token.Claims["exp"] = time.Now().Add(time.Minute * 120).Unix()
+		token.Claims["role"] = "debug"
 
 		str, err := token.SignedString(s.srvKey)
 
@@ -152,6 +174,12 @@ func (s *Server) SetupServiceSecret() error {
 			s.log(PANIC, "Could not make debug auth token")
 		}
 		s.log(DEBUG, "Token: [%s]", str)
+
+		err = ioutil.WriteFile("token", []byte(str), 0600)
+
+		if err != nil {
+			s.log(WARN, "Could not write debug token: %v", err)
+		}
 	}
 
 	return nil
