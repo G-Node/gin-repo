@@ -7,51 +7,9 @@ import (
 	"net/http"
 	"os"
 
-	"path/filepath"
-	"strings"
-
 	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
 )
-
-func getRepoDir() string {
-	dir := os.Getenv("GIN_REPO_KEYDIR")
-
-	if dir == "" {
-		dir = "."
-	}
-
-	return dir
-}
-
-func translatePath(vpath string, uid string) string {
-	dir := os.Getenv("GIN_REPO_DIR")
-
-	if dir == "" {
-		dir = "."
-	}
-
-	if strings.HasPrefix(vpath, "'") && strings.HasSuffix(vpath, "'") {
-		vpath = vpath[1 : len(vpath)-1]
-	}
-
-	path := filepath.Join(dir, uid, vpath)
-
-	if !strings.HasSuffix(path, ".git") {
-		path += ".git"
-	}
-
-	path, err := filepath.Abs(path)
-
-	//TODO: propagate the error
-	if err != nil {
-		return path
-	}
-
-	fmt.Fprintf(os.Stderr, "[D] tp: %s@%s -> %s\n", uid, vpath, path)
-
-	return path
-}
 
 func (s *Server) repoAccess(w http.ResponseWriter, r *http.Request) {
 	log.Printf("repoAccess: %s @ %v", r.Method, r.URL.String())
