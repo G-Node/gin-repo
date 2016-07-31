@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/G-Node/gin-repo/git"
+	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
 )
 
@@ -66,26 +66,26 @@ func (s *Server) repoAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//TODO: check access here
-	path := translatePath(query.Path, query.User)
+	rid, err := store.RepoIdParse(query.Path)
 
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	} else if err != nil {
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	// path does exists, but is it a bare repo?
-	if !git.IsBareRepository(path) {
-		// what is the right status here?
-		//  for now we pretend the path doesnt exist
-		w.WriteHeader(http.StatusNotFound)
+	repo, err := s.repos.OpenGitRepo(rid)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
 		return
 	}
 
-	access := wire.RepoAccessInfo{Path: path, Push: true}
+	access := wire.RepoAccessInfo{Path: repo.Path, Push: true}
 
 	data, err := json.Marshal(access)
 	if err != nil {
