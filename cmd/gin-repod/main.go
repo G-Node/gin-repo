@@ -25,6 +25,7 @@ type Server struct {
 	srvKey []byte
 
 	users *store.UserStore
+	repos *store.RepoStore
 }
 
 type LogLevel int
@@ -198,6 +199,20 @@ func (s *Server) SetupStores() {
 	if err != nil {
 		s.log(PANIC, "Could not setup user store: %v", err)
 		os.Exit(11)
+	}
+
+	s.repos, err = store.NewRepoStore(dir)
+
+	if err != nil {
+		s.log(PANIC, "Could not setup repo store: %v", err)
+		os.Exit(12)
+	}
+
+	repos, err := s.repos.ListRepos()
+
+	s.log(DEBUG, "repos dected:")
+	for _, repo := range repos {
+		s.log(DEBUG, "- [%s]", repo)
 	}
 
 }
