@@ -62,6 +62,28 @@ func (store *RepoStore) idToPath(id RepoId) string {
 	return filepath.Join(store.gitPath(), id.Owner, id.Name+".git")
 }
 
+func (store *RepoStore) CreateRepo(id RepoId) (*git.Repository, error) {
+	path := store.idToPath(id)
+
+	_, err := os.Stat(path)
+
+	if err == nil {
+		return nil, os.ErrExist
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	repo, err := git.InitBareRepository(path)
+	if err != nil {
+		return nil, err
+	}
+
+	gin := filepath.Join(path, "gin")
+	os.Mkdir(gin, 0775) //TODO: what to do about errors?
+
+	return repo, nil
+}
+
 func (store *RepoStore) ListRepos() ([]RepoId, error) {
 	gitpath := store.gitPath()
 	rdir, err := os.Open(gitpath)
