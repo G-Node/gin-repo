@@ -15,6 +15,7 @@ import (
 	"regexp"
 
 	"github.com/G-Node/gin-repo/git"
+	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
 )
 
@@ -52,12 +53,18 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	user := vars["user"]
 
-	path := translatePath(creat.Name, user)
+	rid := store.RepoId{Owner: user, Name: creat.Name}
 
-	repo, err := git.InitBareRepository(path)
+	repo, err := s.repos.CreateRepo(rid)
+
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+
+		if os.IsExist(err) {
+			w.WriteHeader(http.StatusConflict)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+		}
 		return
 	}
 
