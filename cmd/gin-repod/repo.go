@@ -28,7 +28,7 @@ func checkName(name string) bool {
 	return nameChecker.MatchString(name)
 }
 
-func createRepo(w http.ResponseWriter, r *http.Request) {
+func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 	log.Printf("createRepo: %s @ %s", r.Method, r.URL.String())
 
 	decoder := json.NewDecoder(r.Body)

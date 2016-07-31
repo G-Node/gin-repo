@@ -210,7 +210,7 @@ func (s *Server) SetupStores() {
 
 	repos, err := s.repos.ListRepos()
 
-	s.log(DEBUG, "repos dected:")
+	s.log(DEBUG, "repos detected:")
 	for _, repo := range repos {
 		s.log(DEBUG, "- [%s]", repo)
 	}
@@ -263,7 +263,7 @@ Options:
 	r.HandleFunc("/intern/user/lookup", s.lookupUser).Methods("GET")
 	r.HandleFunc("/intern/repos/access", s.repoAccess).Methods("POST")
 
-	r.HandleFunc("/users/{user}/repos", createRepo).Methods("POST")
+	r.HandleFunc("/users/{user}/repos", s.createRepo).Methods("POST")
 	r.HandleFunc("/users/{user}/repos", s.listRepos).Methods("GET")
 
 	r.HandleFunc("/users/{user}/repos/{repo}/branches/{branch}", s.getBranch).Methods("GET")
