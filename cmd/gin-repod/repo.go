@@ -114,21 +114,21 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	user := vars["user"]
 
-	base := s.repoDir(user)
-	names, err := filepath.Glob(filepath.Join(base, "*.git"))
+	//TODO: sanitize username
 
-	if err != nil {
-		panic("Bad pattern for filepath.Glob(). Uh oh!")
-	}
+	ids, err := s.repos.ListReposForUser(user)
 
-	if len(names) == 0 {
+	if os.IsExist(err) || len(ids) == 0 {
 		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	var repos []wire.Repo
-	for _, p := range names {
-		repo, err := git.OpenRepository(p)
+	for _, p := range ids {
+		repo, err := s.repos.OpenGitRepo(p)
 
 		if err != nil {
 			s.log(WARN, "could not open repo @ %q", p)
