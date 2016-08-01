@@ -209,14 +209,16 @@ func (s *Server) getBranch(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 	ivars := mux.Vars(r)
-	iuser := ivars["user"]
-	irepo := ivars["repo"]
 	isha1 := ivars["object"]
 
-	base := filepath.Join(s.repoDir(iuser), irepo+".git")
+	rid, err := s.varsToRepoID(ivars)
 
-	repo, err := git.OpenRepository(base)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
+	repo, err := s.repos.OpenGitRepo(rid)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -229,7 +231,6 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	obj, err := repo.OpenObject(oid)
-
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
