@@ -267,6 +267,8 @@ Options:
 	r.HandleFunc("/users/{user}/repos", s.listRepos).Methods("GET")
 
 	r.HandleFunc("/users/{user}/repos/{repo}/visibility", s.getRepoVisibility).Methods("GET")
+	r.HandleFunc("/users/{user}/repos/{repo}/visibility", s.setRepoVisibility).Methods("PUT")
+
 	r.HandleFunc("/users/{user}/repos/{repo}/branches/{branch}", s.getBranch).Methods("GET")
 
 	r.HandleFunc("/users/{user}/repos/{repo}/objects/{object}", s.getObject).Methods("GET")

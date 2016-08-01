@@ -199,6 +199,50 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("{%q: %q}", "visibility", visibility)))
 }
 
+func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var req struct {
+		Visibility string
+	}
+
+	err = decoder.Decode(&req)
+
+	var public bool
+
+	parser := func() bool {
+		if req.Visibility == "public" {
+			public = true
+		} else if req.Visibility == "private" {
+			public = false
+		} else {
+			return false
+		}
+
+		return true
+	}
+
+	if err != nil || req.Visibility == "" || !parser() {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = s.repos.SetRepoVisibility(rid, public)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	//TODO: return the visibility
+}
+
 func (s *Server) getBranch(w http.ResponseWriter, r *http.Request) {
 	ivars := mux.Vars(r)
 	ibranch := ivars["branch"]
