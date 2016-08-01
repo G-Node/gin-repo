@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"os/user"
-	"path/filepath"
 	"time"
 
+	"github.com/G-Node/gin-repo/auth"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/docopt/docopt-go"
 )
@@ -36,31 +34,6 @@ Options:
 	os.Exit(res)
 }
 
-func readSecret() ([]byte, error) {
-
-	path := "."
-	_, err := os.Stat("gin.secret")
-	if err != nil {
-		path = ""
-	}
-
-	if path == "" {
-		u, err := user.Current()
-		if err == nil {
-			path = u.HomeDir
-		}
-	}
-
-	if path == "" {
-		path = os.Getenv("HOME")
-	}
-
-	filename := filepath.Join(path, "gin.secret")
-	secret, err := ioutil.ReadFile(filename)
-
-	return secret, err
-}
-
 func makeToken(user string) int {
 	token := jwt.New(jwt.SigningMethodHS256)
 
@@ -69,12 +42,17 @@ func makeToken(user string) int {
 		host = "localhost"
 	}
 
-	token.Claims["iss"] = "gin-repo@" + host
-	token.Claims["iat"] = time.Now().Unix()
-	token.Claims["exp"] = time.Now().Add(time.Minute * 5).Unix()
-	token.Claims["role"] = user
+	token.Claims = &auth.Claims{
+		StandardClaims: &jwt.StandardClaims{
+			Issuer:    "gin-repo@" + host,
+			IssuedAt:  time.Now().Unix(),
+			ExpiresAt: time.Now().Add(time.Minute * 120).Unix(),
+			Subject:   user,
+		},
+		TokenType: "user",
+	}
 
-	secret, err := readSecret()
+	secret, err := auth.ReadSharedSecret()
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not load secret: %v", err)

@@ -8,11 +8,10 @@ import (
 	"os/user"
 	"path/filepath"
 	"syscall"
-	"time"
 
+	"github.com/G-Node/gin-repo/auth"
 	"github.com/G-Node/gin-repo/client"
 	"github.com/G-Node/gin-repo/git"
-	"github.com/dgrijalva/jwt-go"
 )
 
 func execGitCommand(name string, args ...string) int {
@@ -120,25 +119,11 @@ func readSecret() ([]byte, error) {
 
 func makeServiceToken() (string, error) {
 
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	host, err := os.Hostname()
-	if err != nil {
-		host = "localhost"
-	}
-
-	token.Claims["iss"] = "gin-repo@" + host
-	token.Claims["iat"] = time.Now().Unix()
-	token.Claims["exp"] = time.Now().Add(time.Minute * 5).Unix()
-
-	token.Claims["role"] = "service"
-
-	secret, err := readSecret()
+	secret, err := auth.ReadSharedSecret()
 
 	if err != nil {
-		return "", fmt.Errorf("Could not load secret: %v", err)
+		return "", fmt.Errorf("could not load secret: %v", err)
 	}
 
-	str, err := token.SignedString(secret)
-	return str, err
+	return auth.MakeServiceToken(secret)
 }

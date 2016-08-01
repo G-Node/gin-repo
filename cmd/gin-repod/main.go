@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,8 +10,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
+	"github.com/G-Node/gin-repo/auth"
 	"github.com/G-Node/gin-repo/store"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/docopt/docopt-go"
@@ -90,8 +89,10 @@ func (s *Server) ServeHTTP(original http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		if role, ok := token.Claims["role"].(string); !ok || (role != "service" && role != "debug") {
-			s.log(WARN, "Got token without or non-service role")
+		claims := token.Claims.(*auth.Claims)
+
+		if claims.TokenType != "service" {
+			s.log(WARN, "Got token without or non-service type")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -101,15 +102,15 @@ func (s *Server) ServeHTTP(original http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) getAuthToken(r *http.Request) (*jwt.Token, error) {
-	auth := r.Header.Get("Authorization")
+	header := r.Header.Get("Authorization")
 
-	if auth == "" {
+	if header == "" {
 		return nil, ErrNoAuth
-	} else if !strings.HasPrefix(auth, "Bearer ") {
-		return nil, fmt.Errorf("Invalid auth type: %q", auth)
+	} else if !strings.HasPrefix(header, "Bearer ") {
+		return nil, fmt.Errorf("Invalid auth type: %q", header)
 	}
 
-	return jwt.Parse(strings.Trim(auth[6:], " "), func(token *jwt.Token) (interface{}, error) {
+	return jwt.ParseWithClaims(strings.Trim(header[6:], " "), &auth.Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Wrong signing method: %v", token.Header["alg"])
 		}
@@ -117,64 +118,35 @@ func (s *Server) getAuthToken(r *http.Request) (*jwt.Token, error) {
 	})
 }
 
-func (s *Server) createSharedSecret() {
-	s.srvKey = make([]byte, 23)
-	_, err := rand.Read(s.srvKey)
-
-	if err != nil {
-		s.log(PANIC, "Could not obtain random bytes for secret: %v", err)
-		os.Exit(10)
-	}
-
-	path := "gin.secret"
-	err = ioutil.WriteFile(path, s.srvKey, 0600)
-	if err != nil {
-		s.log(PANIC, "Could not write to gin.secret: %v", err)
-		os.Exit(10)
-	}
-
-	if abspath, err := filepath.Abs(path); err == nil {
-		path = abspath
-	}
-
-	s.log(DEBUG, "Wrote shared secret to %q", path)
-}
-
-func (s *Server) readSharedSecret() error {
-	path := "gin.secret"
-	data, err := ioutil.ReadFile(path)
-
-	if err != nil {
-		return err
-	}
-
-	s.srvKey = data
-	return nil
-}
-
 func (s *Server) SetupServiceSecret() error {
 
-	err := s.readSharedSecret()
+	secret, err := auth.ReadSharedSecret()
 
 	if err != nil {
-		s.log(DEBUG, "Creating new shared secret")
-		s.createSharedSecret()
-	}
+		secret, err = auth.CreateSharedSecret()
 
-	if val := os.Getenv("GIN_REPO_DEBUGTOKEN"); val != "" {
-		token := jwt.New(jwt.SigningMethodHS256)
-
-		host, err := os.Hostname()
 		if err != nil {
-			host = "localhost"
+			panic(fmt.Errorf("Could not create shared secret: %v", err))
 		}
 
-		token.Claims["iss"] = "gin-repo@" + host
-		token.Claims["iat"] = time.Now().Unix()
-		token.Claims["exp"] = time.Now().Add(time.Minute * 120).Unix()
-		token.Claims["role"] = "debug"
+		path := "gin.secret"
+		err = ioutil.WriteFile(path, secret, 0600)
+		if err != nil {
+			s.log(PANIC, "Could not write to gin.secret: %v", err)
+			os.Exit(10)
+		}
 
-		str, err := token.SignedString(s.srvKey)
+		if abspath, err := filepath.Abs(path); err == nil {
+			path = abspath
+		}
+
+		s.log(DEBUG, "Wrote shared secret to %q", path)
+	}
+
+	s.srvKey = secret
+
+	if val := os.Getenv("GIN_REPO_DEBUGTOKEN"); val != "" {
+		str, err := auth.MakeServiceToken(s.srvKey)
 
 		if err != nil {
 			s.log(PANIC, "Could not make debug auth token")
