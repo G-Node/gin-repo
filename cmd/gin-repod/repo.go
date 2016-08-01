@@ -159,15 +159,27 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) varsToRepoID(vars map[string]string) (store.RepoId, error) {
+	iuser := vars["user"]
+	irepo := vars["repo"]
+
+	//TODO: check name and stuff
+
+	return store.RepoId{iuser, irepo}, nil
+}
+
 func (s *Server) getBranch(w http.ResponseWriter, r *http.Request) {
 	ivars := mux.Vars(r)
-	iuser := ivars["user"]
-	irepo := ivars["repo"]
 	ibranch := ivars["branch"]
 
-	base := filepath.Join(s.repoDir(iuser), irepo+".git")
+	rid, err := s.varsToRepoID(ivars)
 
-	repo, err := git.OpenRepository(base)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	repo, err := s.repos.OpenGitRepo(rid)
 
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
