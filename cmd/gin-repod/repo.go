@@ -159,6 +159,47 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) listPublicRepos(w http.ResponseWriter, r *http.Request) {
+	ids, err := s.repos.ListPublicRepos()
+
+	if os.IsExist(err) || len(ids) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var repos []wire.Repo
+	for _, p := range ids {
+		repo, err := s.repos.OpenGitRepo(p)
+
+		if err != nil {
+			s.log(WARN, "could not open repo @ %q", p)
+			continue
+		}
+
+		wr, err := repoToWire(repo)
+
+		if err != nil {
+			s.log(WARN, "repo serialization error for %q [%v]", p, err)
+			continue
+		}
+
+		repos = append(repos, wr)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	js := json.NewEncoder(w)
+	err = js.Encode(repos)
+
+	if err != nil {
+		s.log(WARN, "Error while encoding, status already sent. oh oh.")
+	}
+}
+
 func (s *Server) varsToRepoID(vars map[string]string) (store.RepoId, error) {
 	iuser := vars["user"]
 	irepo := vars["repo"]
