@@ -168,6 +168,37 @@ func (s *Server) varsToRepoID(vars map[string]string) (store.RepoId, error) {
 	return store.RepoId{iuser, irepo}, nil
 }
 
+func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	public, err := s.repos.GetRepoVisibility(rid)
+	if err != nil {
+		if os.IsNotExist(err) {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		return
+	}
+
+	var visibility string
+	if public {
+		visibility = "public"
+	} else {
+		visibility = "private"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(fmt.Sprintf("{%q: %q}", "visibility", visibility)))
+}
+
 func (s *Server) getBranch(w http.ResponseWriter, r *http.Request) {
 	ivars := mux.Vars(r)
 	ibranch := ivars["branch"]
