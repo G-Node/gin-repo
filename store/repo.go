@@ -179,6 +179,33 @@ func (store *RepoStore) ListSharedRepos(uid string) ([]RepoId, error) {
 	return repos, nil
 }
 
+func (store *RepoStore) ListPublicRepos() ([]RepoId, error) {
+	gitpath := store.gitPath()
+
+	suffix := filepath.Join("gin", "public")
+	pattern := filepath.Join(gitpath, "*", "*.git", suffix)
+	names, err := filepath.Glob(pattern)
+
+	if err != nil {
+		panic("Bad glob pattern!")
+	}
+
+	repos := make([]RepoId, len(names))
+
+	for i, name := range names {
+		fmt.Fprintf(os.Stderr, "[D] public: %q\n", name)
+		rid, err := RepoIdFromPath(name[:len(name)-(len(suffix)+1)])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[W] could not parse repo id: %v", err)
+			continue
+		}
+
+		repos[i] = rid
+	}
+
+	return repos, nil
+}
+
 func (store *RepoStore) OpenGitRepo(id RepoId) (*git.Repository, error) {
 	path := store.idToPath(id)
 	return git.OpenRepository(path)
