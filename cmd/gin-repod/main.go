@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -16,10 +15,6 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/docopt/docopt-go"
 	"github.com/gorilla/mux"
-)
-
-var (
-	ErrNoAuth = errors.New("no authentication provided")
 )
 
 type Server struct {
@@ -105,7 +100,7 @@ func (s *Server) getAuthToken(r *http.Request) (*jwt.Token, error) {
 	header := r.Header.Get("Authorization")
 
 	if header == "" {
-		return nil, ErrNoAuth
+		return nil, auth.ErrNoAuth
 	} else if !strings.HasPrefix(header, "Bearer ") {
 		return nil, fmt.Errorf("Invalid auth type: %q", header)
 	}
