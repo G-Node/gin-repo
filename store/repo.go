@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -48,6 +49,51 @@ func RepoIdFromPath(path string) (RepoId, error) {
 
 	uid := filepath.Base(dir)
 	return RepoId{uid, name}, nil
+}
+
+type AccessLevel int
+
+const (
+	NoAccess    = 0
+	PullAccess  = 1
+	PushAccess  = 2
+	AdminAccess = 3
+	OwnerAccess = 4
+)
+
+func (level AccessLevel) String() string {
+	switch level {
+
+	case PullAccess:
+		return "can-pull"
+	case PushAccess:
+		return "can-push"
+	case AdminAccess:
+		return "is-admin"
+	case OwnerAccess:
+		return "is-owner"
+	}
+
+	return "no-access"
+}
+
+func ParseAccessLevel(str string) (AccessLevel, error) {
+	clean := strings.Trim(str, " \n")
+	switch clean {
+	case "no-access":
+		return NoAccess, nil
+	case "can-pull":
+		return PullAccess, nil
+	case "can-push":
+		return PushAccess, nil
+	case "is-admin":
+		return AdminAccess, nil
+	case "is-owner":
+		return OwnerAccess, nil
+
+	}
+
+	return NoAccess, fmt.Errorf("unknown access level: %q", clean)
 }
 
 type RepoStore struct {
@@ -248,6 +294,77 @@ func (store *RepoStore) SetRepoVisibility(id RepoId, public bool) error {
 	}
 
 	return os.Remove(path)
+}
+
+func (store *RepoStore) SetAccessLevel(id RepoId, user string, level AccessLevel) error {
+	if id.Owner == user {
+		return fmt.Errorf("cannot set access level for owner")
+	}
+
+	//TODO: check user name
+	path := filepath.Join(store.idToPath(id), "gin", "sharing", user)
+
+	if level == NoAccess {
+		err := os.Remove(path)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	err := ioutil.WriteFile(path, []byte(level.String()), 0664)
+	return err
+}
+
+func (store *RepoStore) GetAccessLevel(id RepoId, user string) (AccessLevel, error) {
+	path := filepath.Join(store.idToPath(id), "gin", "sharing", user)
+
+	if id.Owner == user {
+		return OwnerAccess, nil
+	}
+
+	data, err := ioutil.ReadFile(path)
+	if os.IsNotExist(err) {
+		return NoAccess, nil
+	} else if err != nil {
+		return NoAccess, err
+	}
+
+	level, err := ParseAccessLevel(string(data))
+	if err != nil {
+		return NoAccess, err
+	}
+	return level, nil
+}
+
+func (store *RepoStore) ListSharedAccess(id RepoId) (map[string]AccessLevel, error) {
+	path := filepath.Join(store.idToPath(id), "gin", "sharing")
+
+	dir, err := os.Open(path)
+
+	if os.IsNotExist(err) {
+		return make(map[string]AccessLevel), nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	names, err := dir.Readdirnames(-1)
+	if err != nil {
+		return nil, err
+	}
+
+	accessMap := make(map[string]AccessLevel)
+	for _, name := range names {
+		level, err := store.GetAccessLevel(id, name)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[W] could not get level for %s\n", name)
+			continue
+		}
+
+		accessMap[name] = level
+	}
+
+	return accessMap, nil
 }
 
 func NewRepoStore(basePath string) (*RepoStore, error) {

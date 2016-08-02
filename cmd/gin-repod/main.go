@@ -185,6 +185,23 @@ func (s *Server) SetupStores() {
 	s.log(DEBUG, "repos detected:")
 	for _, repo := range repos {
 		s.log(DEBUG, "- [%s]", repo)
+		public, err := s.repos.GetRepoVisibility(repo)
+		if err != nil {
+			s.log(WARN, " - visibility error: %v", err)
+		} else {
+			s.log(DEBUG, " - public: %v", public)
+		}
+
+		access, err := s.repos.ListSharedAccess(repo)
+
+		if err != nil {
+
+		} else if len(access) > 0 {
+			s.log(DEBUG, " - sharing:")
+			for k, v := range access {
+				s.log(DEBUG, "   %q: %s", k, v)
+			}
+		}
 	}
 
 }
