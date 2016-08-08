@@ -126,11 +126,18 @@ func repoToWire(repo *git.Repository) (wire.Repo, error) {
 
 func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	user := vars["user"]
+	owner := vars["user"]
+
+	uid := ""
+
+	user := context.Get(r, "user")
+	if user != nil {
+		uid = user.(*common.User).Uid
+	}
 
 	//TODO: sanitize username
 
-	ids, err := s.repos.ListReposForUser(user)
+	ids, err := s.repos.ListReposForUser(owner)
 
 	if os.IsExist(err) || len(ids) == 0 {
 		w.WriteHeader(http.StatusNotFound)
@@ -142,6 +149,18 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 
 	var repos []wire.Repo
 	for _, p := range ids {
+
+		level, err := s.repos.GetAccessLevel(p, uid)
+
+		if err != nil {
+			s.log(WARN, "Getting access level for %q failed: %v", p, err)
+			continue
+		}
+
+		if level < store.PullAccess {
+			continue
+		}
+
 		repo, err := s.repos.OpenGitRepo(p)
 
 		if err != nil {
@@ -157,6 +176,11 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 		}
 
 		repos = append(repos, wr)
+	}
+
+	if len(repos) == 0 {
+		http.Error(w, "No repositories found", http.StatusNotFound)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -200,6 +224,11 @@ func (s *Server) listPublicRepos(w http.ResponseWriter, r *http.Request) {
 		repos = append(repos, wr)
 	}
 
+	if len(repos) == 0 {
+		http.Error(w, "No repositories found", http.StatusNotFound)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
@@ -209,6 +238,7 @@ func (s *Server) listPublicRepos(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.log(WARN, "Error while encoding, status already sent. oh oh.")
 	}
+
 }
 
 func (s *Server) varsToRepoID(vars map[string]string) (store.RepoId, error) {
