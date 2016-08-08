@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
-	"github.com/G-Node/gin-repo/auth"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/G-Node/gin-repo/store"
 	"github.com/docopt/docopt-go"
 )
 
@@ -35,31 +33,29 @@ Options:
 }
 
 func makeToken(user string) int {
-	token := jwt.New(jwt.SigningMethodHS256)
 
-	host, err := os.Hostname()
-	if err != nil {
-		host = "localhost"
+	var err error
+	dir := os.Getenv("GIN_REPO_DIR")
+
+	if dir == "" {
+		dir = "."
 	}
 
-	token.Claims = &auth.Claims{
-		StandardClaims: &jwt.StandardClaims{
-			Issuer:    "gin-repo@" + host,
-			IssuedAt:  time.Now().Unix(),
-			ExpiresAt: time.Now().Add(time.Minute * 120).Unix(),
-			Subject:   user,
-		},
-		TokenType: "user",
-	}
-
-	secret, err := auth.ReadSharedSecret()
+	store, err := store.NewUserStore(dir)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not load secret: %v", err)
-		return -1
+		fmt.Fprintf(os.Stderr, "Could not setup user store: %v", err)
+		return 11
 	}
 
-	str, err := token.SignedString(secret)
-	fmt.Fprintf(os.Stdout, "Token for %q\n%s\n", user, str)
+	str, err := store.TokenForUser(user)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not create user token: %v", err)
+		return 12
+	}
+
+	fmt.Fprintf(os.Stderr, "Token for %q\n", user)
+	fmt.Fprintf(os.Stdout, "%s\n", str)
 	return 0
 }
