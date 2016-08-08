@@ -14,6 +14,7 @@ import (
 	"github.com/G-Node/gin-repo/store"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/docopt/docopt-go"
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 )
 
@@ -91,6 +92,15 @@ func (s *Server) ServeHTTP(original http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+	}
+
+	user, err := s.users.UserForRequest(req)
+
+	if err != nil && err != auth.ErrNoAuth {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	} else if user != nil {
+		context.Set(req, "user", user)
 	}
 
 	s.Root.ServeHTTP(w, req)
