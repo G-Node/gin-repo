@@ -3,10 +3,9 @@ language: go
 go:
   - 1.6
   - tip
-  
+
 install:
   - go get "github.com/docopt/docopt-go"
   - go get "github.com/gorilla/mux"
+  - go get "github.com/gorilla/context"
   - go get "github.com/dgrijalva/jwt-go"
- 
- 
