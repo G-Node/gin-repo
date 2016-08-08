@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/G-Node/gin-repo/auth"
 	. "github.com/G-Node/gin-repo/common"
 	"github.com/G-Node/gin-repo/ssh"
+	"github.com/dgrijalva/jwt-go"
 )
 
 type UserStore struct {
@@ -14,6 +17,8 @@ type UserStore struct {
 
 	users    map[string]*User
 	key2User map[string]*User
+
+	secret []byte
 }
 
 func (store *UserStore) loadUser(uid string) (User, error) {
@@ -69,7 +74,8 @@ func (store *UserStore) Setup() error {
 		}
 	}
 
-	return nil
+	store.secret, err = auth.ReadSharedSecret()
+	return err
 }
 
 func (store *UserStore) LookupUserBySSH(fingerprint string) (*User, error) {
@@ -79,6 +85,33 @@ func (store *UserStore) LookupUserBySSH(fingerprint string) (*User, error) {
 	}
 
 	return nil, fmt.Errorf("could not find user with given fingerprint")
+}
+
+func (store *UserStore) TokenForUser(uid string) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	host, err := os.Hostname()
+	if err != nil {
+		host = "localhost"
+	}
+
+	token.Claims = &auth.Claims{
+		StandardClaims: &jwt.StandardClaims{
+			Issuer:    "gin-repo@" + host,
+			IssuedAt:  time.Now().Unix(),
+			ExpiresAt: time.Now().Add(time.Minute * 120).Unix(), //FIXME: hardcoded exp time
+			Subject:   uid,
+		},
+		TokenType: "user",
+	}
+
+	str, err := token.SignedString(store.secret)
+
+	if err != nil {
+		return "", err
+	}
+
+	return str, nil
 }
 
 func NewUserStore(base string) (*UserStore, error) {
