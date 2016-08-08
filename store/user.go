@@ -2,8 +2,10 @@ package store
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/G-Node/gin-repo/auth"
@@ -112,6 +114,41 @@ func (store *UserStore) TokenForUser(uid string) (string, error) {
 	}
 
 	return str, nil
+}
+
+func (store *UserStore) UserForRequest(r *http.Request) (*User, error) {
+	header := r.Header.Get("Authorization")
+
+	if header == "" {
+		return nil, auth.ErrNoAuth
+	} else if !strings.HasPrefix(header, "Bearer ") {
+		return nil, fmt.Errorf("Invalid auth type: %q", header)
+	}
+
+	token, err := jwt.ParseWithClaims(strings.Trim(header[6:], " "), &auth.Claims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Wrong signing method: %v", token.Header["alg"])
+		}
+		return store.secret, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*auth.Claims)
+
+	if !ok || claims.TokenType != "user" {
+		return nil, fmt.Errorf("Invalid token")
+	}
+
+	user, ok := store.users[claims.Subject]
+
+	if !ok {
+		return nil, fmt.Errorf("Invalid or unknown user")
+	}
+
+	return user, nil
 }
 
 func NewUserStore(base string) (*UserStore, error) {
