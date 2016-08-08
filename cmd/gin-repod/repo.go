@@ -14,9 +14,11 @@ import (
 
 	"regexp"
 
+	"github.com/G-Node/gin-repo/common"
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
+	"github.com/gorilla/context"
 )
 
 var nameChecker *regexp.Regexp
@@ -51,9 +53,18 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	user := vars["user"]
+	owner := vars["user"]
 
-	rid := store.RepoId{Owner: user, Name: creat.Name}
+	user, ok := context.GetOk(r, "user")
+	if !ok {
+		http.Error(w, "The owner must be logged in to create a repository", http.StatusUnauthorized)
+		return
+	} else if user.(*common.User).Uid != owner {
+		http.Error(w, "Only the owner can create a repo", http.StatusForbidden)
+		return
+	}
+
+	rid := store.RepoId{Owner: owner, Name: creat.Name}
 
 	repo, err := s.repos.CreateRepo(rid)
 
