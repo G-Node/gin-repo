@@ -14,7 +14,6 @@ import (
 
 	"regexp"
 
-	"github.com/G-Node/gin-repo/common"
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
@@ -59,7 +58,7 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		http.Error(w, "The owner must be logged in to create a repository", http.StatusUnauthorized)
 		return
-	} else if user.(*common.User).Uid != owner {
+	} else if user.(*store.User).Uid != owner {
 		http.Error(w, "Only the owner can create a repo", http.StatusForbidden)
 		return
 	}
@@ -132,7 +131,7 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 
 	user := context.Get(r, "user")
 	if user != nil {
-		uid = user.(*common.User).Uid
+		uid = user.(*store.User).Uid
 	}
 
 	//TODO: sanitize username

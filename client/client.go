@@ -7,10 +7,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	. "github.com/G-Node/gin-repo/common"
-	"github.com/G-Node/gin-repo/wire"
 	"io"
 	"io/ioutil"
+
+	"github.com/G-Node/gin-repo/store"
+	"github.com/G-Node/gin-repo/wire"
 )
 
 type Client struct {
@@ -51,7 +52,7 @@ func (client *Client) Call(method string, url string, v interface{}) (*http.Resp
 	return client.web.Do(req)
 }
 
-func (client *Client) LookupUserByFingerprint(fingerprint string) (*User, error) {
+func (client *Client) LookupUserByFingerprint(fingerprint string) (*store.User, error) {
 
 	params := url.Values{}
 	params.Add("key", fingerprint)
@@ -72,7 +73,7 @@ func (client *Client) LookupUserByFingerprint(fingerprint string) (*User, error)
 		return nil, err
 	}
 
-	var user User
+	var user store.User
 	if err = json.Unmarshal(body, &user); err != nil {
 		return nil, err
 	}
