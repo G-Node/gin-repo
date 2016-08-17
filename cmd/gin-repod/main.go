@@ -24,7 +24,7 @@ type Server struct {
 
 	srvKey []byte
 
-	users *store.UserStore
+	users store.UserStore
 	repos *store.RepoStore
 }
 
