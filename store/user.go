@@ -8,11 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/G-Node/gin-repo/auth"
-	. "github.com/G-Node/gin-repo/common"
-	"github.com/G-Node/gin-repo/ssh"
 	"github.com/dgrijalva/jwt-go"
+
+	"github.com/G-Node/gin-repo/auth"
+	"github.com/G-Node/gin-repo/ssh"
 )
+
+type User struct {
+	Uid  string
+	Keys []ssh.Key
+}
 
 type UserStore struct {
 	Path string
