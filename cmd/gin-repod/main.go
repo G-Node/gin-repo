@@ -225,16 +225,6 @@ func (s *Server) ListenAndServe() error {
 	return err
 }
 
-func (s *Server) repoDir(user string) string {
-	dir := os.Getenv("GIN_REPO_DIR")
-
-	if dir == "" {
-		dir = "."
-	}
-
-	return filepath.Join(dir, user)
-}
-
 func NewServer(addr string) *Server {
 	s := &Server{Server: http.Server{Addr: addr}, Root: mux.NewRouter()}
 	s.Handler = s
