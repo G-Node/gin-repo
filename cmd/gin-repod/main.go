@@ -213,7 +213,25 @@ func (s *Server) SetupStores() {
 			}
 		}
 	}
+}
 
+func (s *Server) SetupRoutes() {
+	r := s.Root
+
+	r.HandleFunc("/intern/user/lookup", s.lookupUser).Methods("GET")
+	r.HandleFunc("/intern/repos/access", s.repoAccess).Methods("POST")
+
+	r.HandleFunc("/repos/public", s.listPublicRepos).Methods("GET")
+
+	r.HandleFunc("/users/{user}/repos", s.createRepo).Methods("POST")
+	r.HandleFunc("/users/{user}/repos", s.listRepos).Methods("GET")
+
+	r.HandleFunc("/users/{user}/repos/{repo}/visibility", s.getRepoVisibility).Methods("GET")
+	r.HandleFunc("/users/{user}/repos/{repo}/visibility", s.setRepoVisibility).Methods("PUT")
+
+	r.HandleFunc("/users/{user}/repos/{repo}/branches/{branch}", s.getBranch).Methods("GET")
+
+	r.HandleFunc("/users/{user}/repos/{repo}/objects/{object}", s.getObject).Methods("GET")
 }
 
 func (s *Server) ListenAndServe() error {
@@ -247,23 +265,7 @@ Options:
 	fmt.Println(args)
 
 	s := NewServer(":8888")
-	r := s.Root
-
-	r.HandleFunc("/intern/user/lookup", s.lookupUser).Methods("GET")
-	r.HandleFunc("/intern/repos/access", s.repoAccess).Methods("POST")
-
-	r.HandleFunc("/repos/public", s.listPublicRepos).Methods("GET")
-
-	r.HandleFunc("/users/{user}/repos", s.createRepo).Methods("POST")
-	r.HandleFunc("/users/{user}/repos", s.listRepos).Methods("GET")
-
-	r.HandleFunc("/users/{user}/repos/{repo}/visibility", s.getRepoVisibility).Methods("GET")
-	r.HandleFunc("/users/{user}/repos/{repo}/visibility", s.setRepoVisibility).Methods("PUT")
-
-	r.HandleFunc("/users/{user}/repos/{repo}/branches/{branch}", s.getBranch).Methods("GET")
-
-	r.HandleFunc("/users/{user}/repos/{repo}/objects/{object}", s.getObject).Methods("GET")
-
+	s.SetupRoutes()
 	s.SetupServiceSecret()
 	s.SetupStores()
 	s.ListenAndServe()
