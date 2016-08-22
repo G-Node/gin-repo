@@ -213,50 +213,9 @@ func (s *Server) SetupStores() {
 			}
 		}
 	}
-
 }
 
-func (s *Server) ListenAndServe() error {
-	s.log(INFO, "Listening on %s", s.Addr)
-	err := s.Server.ListenAndServe()
-	if err != nil {
-		s.log(ERROR, "ListenAndServe() error: %v", err)
-	}
-	return err
-}
-
-func (s *Server) repoDir(user string) string {
-	dir := os.Getenv("GIN_REPO_DIR")
-
-	if dir == "" {
-		dir = "."
-	}
-
-	return filepath.Join(dir, user)
-}
-
-func NewServer(addr string) *Server {
-	s := &Server{Server: http.Server{Addr: addr}, Root: mux.NewRouter()}
-	s.Handler = s
-	return s
-}
-
-func main() {
-	usage := `gin repo daemon.
-
-Usage:
-  gin-repod
-  gin-repod -h | --help
-  gin-repod --version
-
-Options:
-  -h --help     Show this screen.
-  `
-
-	args, _ := docopt.Parse(usage, nil, true, "gin repod 0.1a", false)
-	fmt.Println(args)
-
-	s := NewServer(":8888")
+func (s *Server) SetupRoutes() {
 	r := s.Root
 
 	r.HandleFunc("/intern/user/lookup", s.lookupUser).Methods("GET")
@@ -273,8 +232,48 @@ Options:
 	r.HandleFunc("/users/{user}/repos/{repo}/branches/{branch}", s.getBranch).Methods("GET")
 
 	r.HandleFunc("/users/{user}/repos/{repo}/objects/{object}", s.getObject).Methods("GET")
+}
 
+func (s *Server) ListenAndServe() error {
+	s.log(INFO, "Listening on %s", s.Addr)
+	err := s.Server.ListenAndServe()
+	if err != nil {
+		s.log(ERROR, "ListenAndServe() error: %v", err)
+	}
+	return err
+}
+
+func NewServer(addr string) *Server {
+	s := &Server{Server: http.Server{Addr: addr}, Root: mux.NewRouter()}
+	s.Handler = s
+	return s
+}
+
+func main() {
+	usage := `gin repo daemon.
+
+Usage:
+  gin-repod
+  gin-repod make-token <user>
+  gin-repod -h | --help
+  gin-repod --version
+
+
+Options:
+  -h --help     Show this screen.
+  `
+
+	args, _ := docopt.Parse(usage, nil, true, "gin repod 0.1a", false)
+	fmt.Println(args)
+
+	s := NewServer(":8888")
+	s.SetupRoutes()
 	s.SetupServiceSecret()
 	s.SetupStores()
+
+	// this call might never return if there actually was
+	// a command line "command"
+	s.handleCommands(args)
+
 	s.ListenAndServe()
 }
