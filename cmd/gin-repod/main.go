@@ -254,8 +254,10 @@ func main() {
 
 Usage:
   gin-repod
+  gin-repod make-token <user>
   gin-repod -h | --help
   gin-repod --version
+
 
 Options:
   -h --help     Show this screen.
@@ -268,5 +270,10 @@ Options:
 	s.SetupRoutes()
 	s.SetupServiceSecret()
 	s.SetupStores()
+
+	// this call might never return if there actually was
+	// a command line "command"
+	s.handleCommands(args)
+
 	s.ListenAndServe()
 }
