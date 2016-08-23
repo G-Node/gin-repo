@@ -1,0 +1,42 @@
+---
+repos:
+  - repo: &openfmri
+      clone: git://github.com/datalad/openfmri--ds000202.git
+  - repo: &repod
+      clone: git://github.com/G-Node/gin-repo
+  - repo: &auth
+      clone: git://github.com/G-Node/gin-auth
+  - repo: &ui
+      clone: git://github.com/G-Node/gin-ui
+
+users:
+  alice:
+    repos:
+      openfmri:
+        <<: *openfmri
+        public: true
+        shared: {alice: "is-admin"}
+      repod:
+        <<: *repod
+        public: true
+        shared: {}
+      auth:
+        <<: *auth
+        public: true
+        shared: {}
+  bob:
+    repos:
+      repod:
+        <<: *repod
+        public: false
+        shared: {}
+      auth:
+        <<: *auth
+        public: false
+        shared: {}
+  gicmo:
+    repos:
+      openfmri:
+        <<: *openfmri
+        public: true
+        shared: {alice: "is-admin"}
