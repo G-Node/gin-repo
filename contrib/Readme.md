@@ -1,8 +1,12 @@
 
-Generate keys with:
+Generate a sample user- and repostore with:
+
 ```bash
-     ssh-keygen -t rsa -b 4096 -C "blue" -f blue.rsa -P ""
+     mkdata.py data.yml
 ```
+
+After that calling `gin-repod` in the same directory should
+start a working server.
 
 Docker:
 ```bash
