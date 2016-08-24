@@ -316,12 +316,13 @@ func (store *RepoStore) SetAccessLevel(id RepoId, user string, level AccessLevel
 	return err
 }
 
-func (store *RepoStore) GetAccessLevel(id RepoId, user string) (AccessLevel, error) {
-	path := filepath.Join(store.idToPath(id), "gin", "sharing", user)
+func (store *RepoStore) readAccessLevel(id RepoId, user string) (AccessLevel, error) {
 
-	if id.Owner == user {
-		return OwnerAccess, nil
+	if user == "" {
+		return NoAccess, nil
 	}
+
+	path := filepath.Join(store.idToPath(id), "gin", "sharing", user)
 
 	data, err := ioutil.ReadFile(path)
 	if os.IsNotExist(err) {
@@ -334,7 +335,36 @@ func (store *RepoStore) GetAccessLevel(id RepoId, user string) (AccessLevel, err
 	if err != nil {
 		return NoAccess, err
 	}
+
 	return level, nil
+}
+
+func (store *RepoStore) GetAccessLevel(id RepoId, user string) (AccessLevel, error) {
+
+	if id.Owner == user {
+		return OwnerAccess, nil
+	}
+
+	level, err := store.readAccessLevel(id, user)
+	if err != nil {
+		//what now? besides logging it?
+		fmt.Fprintf(os.Stderr, "error reading access level: %v", err)
+	}
+
+	// if we got any level other then NoAccess, which is the lowest,
+	// then we are done. Otherwise, if the repo is public we could
+	// still get PullAccess, the next higher one, so check for that.
+	if level != NoAccess {
+		return level, nil
+	}
+
+	public, err := store.GetRepoVisibility(id)
+	if err != nil {
+		return NoAccess, err
+	} else if public {
+		return PullAccess, nil
+	}
+	return NoAccess, nil
 }
 
 func (store *RepoStore) ListSharedAccess(id RepoId) (map[string]AccessLevel, error) {
