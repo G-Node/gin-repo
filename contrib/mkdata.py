@@ -22,7 +22,7 @@ def create_user(user):
     base = os.path.join("users", user)
     if not os.path.exists(base):
         os.mkdir(base)
-    key = os.path.join(base, user + "ssh.key")
+    key = os.path.join(base, user + ".ssh.key")
     if not os.path.exists(key):
         subprocess.check_call(["ssh-keygen", "-t", "rsa", "-b", "4096",
                                "-C", user, "-f", key, "-P", ""])
