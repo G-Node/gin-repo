@@ -8,6 +8,8 @@ repos:
       clone: git://github.com/G-Node/gin-auth
   - repo: &ui
       clone: git://github.com/G-Node/gin-ui
+  - repo: &exrepo
+      generate: mkrepo.sh exrepo
 
 users:
   alice:
@@ -40,3 +42,6 @@ users:
         <<: *openfmri
         public: true
         shared: {alice: "is-admin"}
+      exrepo:
+        <<: *exrepo
+        public: true
