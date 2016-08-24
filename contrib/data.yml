@@ -17,7 +17,7 @@ users:
       openfmri:
         <<: *openfmri
         public: true
-        shared: {alice: "is-admin"}
+        shared: {bob: "is-admin"}
       repod:
         <<: *repod
         public: true
