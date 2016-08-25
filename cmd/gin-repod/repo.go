@@ -14,10 +14,10 @@ import (
 
 	"regexp"
 
+	"github.com/G-Node/gin-repo/auth"
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
-	"github.com/gorilla/context"
 )
 
 var nameChecker *regexp.Regexp
@@ -54,11 +54,16 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	owner := vars["user"]
 
-	user, ok := context.GetOk(r, "user")
-	if !ok {
+	user, err := s.users.UserForRequest(r)
+
+	if err != nil && err == auth.ErrNoAuth {
 		http.Error(w, "The owner must be logged in to create a repository", http.StatusUnauthorized)
 		return
-	} else if user.(*store.User).Uid != owner {
+	} else if err != nil {
+		http.Error(w, "Authorization error", http.StatusForbidden)
+		s.log(DEBUG, "Auth error: %v", err)
+		return
+	} else if user.Uid != owner {
 		http.Error(w, "Only the owner can create a repo", http.StatusForbidden)
 		return
 	}
@@ -127,13 +132,11 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	owner := vars["user"]
 
-	uid := ""
-
-	user := context.Get(r, "user")
-	if user != nil {
-		uid = user.(*store.User).Uid
+	user, err := s.users.UserForRequest(r)
+	if err != nil && err != auth.ErrNoAuth {
+		http.Error(w, "Authorization error", http.StatusForbidden)
+		return
 	}
-
 	//TODO: sanitize username
 
 	ids, err := s.repos.ListReposForUser(owner)
@@ -149,7 +152,7 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	var repos []wire.Repo
 	for _, p := range ids {
 
-		level, err := s.repos.GetAccessLevel(p, uid)
+		level, err := s.repos.GetAccessLevel(p, user.Uid)
 
 		if err != nil {
 			s.log(WARN, "Getting access level for %q failed: %v", p, err)
