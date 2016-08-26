@@ -14,7 +14,6 @@ import (
 
 	"regexp"
 
-	"github.com/G-Node/gin-repo/auth"
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
@@ -54,21 +53,12 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	owner := vars["user"]
 
-	user, err := s.users.UserForRequest(r)
+	rid := store.RepoId{Owner: owner, Name: creat.Name}
 
-	if err != nil && err == auth.ErrNoAuth {
-		http.Error(w, "The owner must be logged in to create a repository", http.StatusUnauthorized)
-		return
-	} else if err != nil {
-		http.Error(w, "Authorization error", http.StatusForbidden)
-		s.log(DEBUG, "Auth error: %v", err)
-		return
-	} else if user.Uid != owner {
-		http.Error(w, "Only the owner can create a repo", http.StatusForbidden)
+	_, ok := s.checkUser(w, r, rid, store.OwnerAccess)
+	if !ok {
 		return
 	}
-
-	rid := store.RepoId{Owner: owner, Name: creat.Name}
 
 	repo, err := s.repos.CreateRepo(rid)
 
@@ -131,13 +121,12 @@ func repoToWire(repo *git.Repository) (wire.Repo, error) {
 func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	owner := vars["user"]
+	//TODO: sanitize ownername
 
-	user, err := s.users.UserForRequest(r)
-	if err != nil && err != auth.ErrNoAuth {
-		http.Error(w, "Authorization error", http.StatusForbidden)
+	user, ok := s.checkUser(w, r, store.RepoId{}, store.NoAccess)
+	if !ok {
 		return
 	}
-	//TODO: sanitize username
 
 	ids, err := s.repos.ListReposForUser(owner)
 
@@ -149,10 +138,15 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uid := ""
+	if user != nil {
+		uid = user.Uid
+	}
+
 	var repos []wire.Repo
 	for _, p := range ids {
 
-		level, err := s.repos.GetAccessLevel(p, user.Uid)
+		level, err := s.repos.GetAccessLevel(p, uid)
 
 		if err != nil {
 			s.log(WARN, "Getting access level for %q failed: %v", p, err)
@@ -261,6 +255,11 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, ok := s.checkUser(w, r, rid, store.PullAccess)
+	if !ok {
+		return
+	}
+
 	public, err := s.repos.GetRepoVisibility(rid)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -289,6 +288,11 @@ func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkUser(w, r, rid, store.AdminAccess)
+	if !ok {
 		return
 	}
 
