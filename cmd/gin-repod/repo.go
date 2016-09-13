@@ -55,7 +55,7 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 
 	rid := store.RepoId{Owner: owner, Name: creat.Name}
 
-	_, ok := s.checkUser(w, r, rid, store.OwnerAccess)
+	_, ok := s.checkAccess(w, r, rid, store.OwnerAccess)
 	if !ok {
 		return
 	}
@@ -123,7 +123,7 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	owner := vars["user"]
 	//TODO: sanitize ownername
 
-	user, ok := s.checkUser(w, r, store.RepoId{}, store.NoAccess)
+	user, ok := s.checkAccess(w, r, store.RepoId{}, store.NoAccess)
 	if !ok {
 		return
 	}
@@ -255,7 +255,7 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, ok := s.checkUser(w, r, rid, store.PullAccess)
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
 	if !ok {
 		return
 	}
@@ -291,7 +291,7 @@ func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, ok := s.checkUser(w, r, rid, store.AdminAccess)
+	_, ok := s.checkAccess(w, r, rid, store.AdminAccess)
 	if !ok {
 		return
 	}

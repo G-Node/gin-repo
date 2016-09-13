@@ -7,7 +7,7 @@ import (
 	"github.com/G-Node/gin-repo/store"
 )
 
-func (s *Server) checkUser(w http.ResponseWriter, r *http.Request, rid store.RepoId, want store.AccessLevel) (*store.User, bool) {
+func (s *Server) checkAccess(w http.ResponseWriter, r *http.Request, rid store.RepoId, want store.AccessLevel) (*store.User, bool) {
 
 	user, err := s.users.UserForRequest(r)
 
