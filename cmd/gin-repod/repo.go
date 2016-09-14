@@ -17,7 +17,6 @@ import (
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
-	"github.com/gorilla/context"
 )
 
 var nameChecker *regexp.Regexp
@@ -54,16 +53,12 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	owner := vars["user"]
 
-	user, ok := context.GetOk(r, "user")
+	rid := store.RepoId{Owner: owner, Name: creat.Name}
+
+	_, ok := s.checkAccess(w, r, rid, store.OwnerAccess)
 	if !ok {
-		http.Error(w, "The owner must be logged in to create a repository", http.StatusUnauthorized)
-		return
-	} else if user.(*store.User).Uid != owner {
-		http.Error(w, "Only the owner can create a repo", http.StatusForbidden)
 		return
 	}
-
-	rid := store.RepoId{Owner: owner, Name: creat.Name}
 
 	repo, err := s.repos.CreateRepo(rid)
 
@@ -126,15 +121,12 @@ func repoToWire(repo *git.Repository) (wire.Repo, error) {
 func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	owner := vars["user"]
+	//TODO: sanitize ownername
 
-	uid := ""
-
-	user := context.Get(r, "user")
-	if user != nil {
-		uid = user.(*store.User).Uid
+	user, ok := s.checkAccess(w, r, store.RepoId{}, store.NoAccess)
+	if !ok {
+		return
 	}
-
-	//TODO: sanitize username
 
 	ids, err := s.repos.ListReposForUser(owner)
 
@@ -144,6 +136,11 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+
+	uid := ""
+	if user != nil {
+		uid = user.Uid
 	}
 
 	var repos []wire.Repo
@@ -258,6 +255,11 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+	if !ok {
+		return
+	}
+
 	public, err := s.repos.GetRepoVisibility(rid)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -286,6 +288,11 @@ func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkAccess(w, r, rid, store.AdminAccess)
+	if !ok {
 		return
 	}
 
