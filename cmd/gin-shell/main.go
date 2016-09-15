@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/G-Node/gin-repo/client"
+	"github.com/G-Node/gin-repo/ssh"
 	"github.com/docopt/docopt-go"
 )
 
@@ -13,7 +14,7 @@ func main() {
 	usage := `gin shell.
 
 Usage:
-  gin-shell --keys <fingerprint> [-S address]
+  gin-shell --keys <keydata> [-S address]
   gin-shell [-S address] <uid>
   gin-shell -h | --help
   gin-shell --version
@@ -40,8 +41,15 @@ Options:
 	}
 
 	if val, ok := args["--keys"]; ok && val.(bool) {
-		fingerprint := args["<fingerprint>"].(string)
-		ret := cmdKeysSSHd(client, fingerprint)
+		keydata := args["<keydata>"].(string)
+
+		sshkey, err := ssh.ParseKey([]byte(keydata))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not parse keydata: %v\n", err)
+			os.Exit(-1)
+		}
+
+		ret := cmdKeysSSHd(client, sshkey.Fingerprint)
 		os.Exit(ret)
 	}
 

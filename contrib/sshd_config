@@ -2,5 +2,5 @@ Port 22
 AddressFamily inet
 HostKey /etc/ssh/ssh_host_rsa_key
 UsePrivilegeSeparation yes
-AuthorizedKeysCommand /go/bin/gin-shell --keys %f
+AuthorizedKeysCommand /go/bin/gin-shell --keys %k
 AuthorizedKeysCommandUser git
