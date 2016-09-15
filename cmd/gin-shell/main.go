@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/user"
 
 	"github.com/G-Node/gin-repo/client"
 	"github.com/G-Node/gin-repo/ssh"
@@ -14,7 +15,7 @@ func main() {
 	usage := `gin shell.
 
 Usage:
-  gin-shell --keys <keydata> [-S address]
+  gin-shell --keys <username> <keydata> [-S address]
   gin-shell [-S address] <uid>
   gin-shell -h | --help
   gin-shell --version
@@ -42,6 +43,17 @@ Options:
 
 	if val, ok := args["--keys"]; ok && val.(bool) {
 		keydata := args["<keydata>"].(string)
+		username := args["<username>"].(string)
+
+		user, err := user.Lookup(username)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error during user lookup: %v", err)
+			os.Exit(-1)
+		}
+
+		if user.Uid != fmt.Sprintf("%d", os.Getuid()) {
+			os.Exit(0)
+		}
 
 		sshkey, err := ssh.ParseKey([]byte(keydata))
 		if err != nil {
