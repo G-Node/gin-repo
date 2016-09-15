@@ -14,7 +14,7 @@ func main() {
 
 Usage:
   gin-shell --keys <fingerprint> [-S address]
-  gin-shell <uid>
+  gin-shell [-S address] <uid>
   gin-shell -h | --help
   gin-shell --version
 
