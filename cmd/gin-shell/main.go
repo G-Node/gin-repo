@@ -13,22 +13,27 @@ func main() {
 	usage := `gin shell.
 
 Usage:
-  gin-shell --keys <fingerprint>
-  
+  gin-shell --keys <fingerprint> [-S address]
   gin-shell <uid>
-
   gin-shell -h | --help
   gin-shell --version
 
 Options:
-  -h --help     Show this screen.
-  --version     Show version.
+  -h --help                     Show this screen.
+  --version                     Show version.
+  --keys                        Return the command for the ssh daemon to use.
+  -S address --server address   Address of the gin repo daemon [default: http://localhost:8082]
 `
-	args, _ := docopt.Parse(usage, nil, true, "gin shell 0.1a", false)
+	args, err := docopt.Parse(usage, nil, true, "gin shell 0.1a", false)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error while parsing cmd line: %v\n", err)
+		os.Exit(-1)
+	}
 
 	log.SetOutput(os.Stderr)
 
-	client := client.NewClient("http://localhost:8888")
+	client := client.NewClient(args["--server"].(string))
 
 	if token, err := makeServiceToken(); err == nil {
 		client.AuthToken = token
