@@ -1,12 +1,16 @@
 package ssh
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/crypto/ssh"
 )
 
 // Key represents an SSH public key
@@ -65,4 +69,28 @@ func ReadKeysInDir(dir string) map[string]Key {
 	}
 
 	return keys
+}
+
+func ParseKey(data []byte) (Key, error) {
+
+	pub, comment, _, _, err := ssh.ParseAuthorizedKey(data)
+	if err != nil {
+		return Key{}, err
+	}
+
+	sha := sha256.New()
+	keydata := pub.Marshal()
+	_, err = sha.Write(keydata)
+	if err != nil {
+		return Key{}, err
+	}
+
+	fingerprint := "SHA256:" + base64.RawStdEncoding.EncodeToString(sha.Sum(nil))
+
+	return Key{Fingerprint: fingerprint,
+		Keysize: fmt.Sprintf("%d", len(keydata)),
+		Comment: comment,
+		Keydata: keydata,
+	}, nil
+
 }
