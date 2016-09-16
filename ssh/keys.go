@@ -101,6 +101,8 @@ func (key Key) MarshalAuthorizedKey() []byte {
 }
 
 //Fingerprint returns the SH256 has of the fingerprint
+//base64 url encoded without a "SHA256:" prefix to be
+//compatible with gin-auth
 func (key Key) Fingerprint() (string, error) {
 	sha := sha256.New()
 	_, err := sha.Write(key.Keydata)
@@ -108,7 +110,6 @@ func (key Key) Fingerprint() (string, error) {
 		return "", err
 	}
 
-	fingerprint := "SHA256:" + base64.RawStdEncoding.EncodeToString(sha.Sum(nil))
-
+	fingerprint := base64.RawURLEncoding.EncodeToString(sha.Sum(nil))
 	return fingerprint, nil
 }
