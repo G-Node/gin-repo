@@ -61,7 +61,7 @@ Options:
 			os.Exit(-1)
 		}
 
-		ret := cmdKeysSSHd(client, sshkey.Fingerprint)
+		ret := cmdKeysSSHd(client, sshkey)
 		os.Exit(ret)
 	}
 

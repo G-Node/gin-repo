@@ -7,9 +7,16 @@ import (
 	"os/exec"
 
 	"github.com/G-Node/gin-repo/client"
+	"github.com/G-Node/gin-repo/ssh"
 )
 
-func cmdKeysSSHd(client *client.Client, fingerprint string) int {
+func cmdKeysSSHd(client *client.Client, key ssh.Key) int {
+
+	fingerprint, err := key.Fingerprint()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not create fingerprint: %v\n", err)
+		return 1
+	}
 
 	user, err := client.LookupUserByFingerprint(fingerprint)
 

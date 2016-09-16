@@ -15,11 +15,10 @@ import (
 
 // Key represents an SSH public key
 type Key struct {
-	Type        string
-	Fingerprint string
-	Keysize     int
-	Comment     string
-	Keydata     []byte
+	Type    string
+	Keysize int
+	Comment string
+	Keydata []byte
 }
 
 // ReadKeysInDir lists ssh public keys in a dir
@@ -55,7 +54,14 @@ func ReadKeysInDir(dir string) map[string]Key {
 			continue
 		}
 
-		keys[key.Fingerprint] = key
+		fingerprint, err := key.Fingerprint()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[W] Skipping %s, fingerprint error: %v", name, err)
+			continue
+		}
+
+		keys[fingerprint] = key
 	}
 
 	return keys
@@ -70,21 +76,13 @@ func ParseKey(data []byte) (Key, error) {
 		return Key{}, err
 	}
 
-	sha := sha256.New()
 	keydata := pub.Marshal()
-	_, err = sha.Write(keydata)
-	if err != nil {
-		return Key{}, err
-	}
-
-	fingerprint := "SHA256:" + base64.RawStdEncoding.EncodeToString(sha.Sum(nil))
 
 	return Key{
-		Type:        pub.Type(),
-		Fingerprint: fingerprint,
-		Keysize:     len(keydata),
-		Comment:     comment,
-		Keydata:     keydata,
+		Type:    pub.Type(),
+		Keysize: len(keydata),
+		Comment: comment,
+		Keydata: keydata,
 	}, nil
 
 }
@@ -100,4 +98,17 @@ func (key Key) MarshalAuthorizedKey() []byte {
 	e.Close()
 	data.WriteByte('\n')
 	return data.Bytes()
+}
+
+//Fingerprint returns the SH256 has of the fingerprint
+func (key Key) Fingerprint() (string, error) {
+	sha := sha256.New()
+	_, err := sha.Write(key.Keydata)
+	if err != nil {
+		return "", err
+	}
+
+	fingerprint := "SHA256:" + base64.RawStdEncoding.EncodeToString(sha.Sum(nil))
+
+	return fingerprint, nil
 }
