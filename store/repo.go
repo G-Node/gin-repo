@@ -21,6 +21,11 @@ func (id RepoId) String() string {
 }
 
 func RepoIdParse(str string) (RepoId, error) {
+
+	// FIXME: we are remove leading, trailing slashes
+	//        maybe that is not a good idea
+	str = strings.Trim(str, "/ ")
+
 	if count := strings.Count(str, "/"); count != 1 {
 		return RepoId{}, fmt.Errorf("malformed id: wrong number of components: %d", count)
 	}
