@@ -34,8 +34,7 @@ func cmdKeysSSHd(client *client.Client, fingerprint string) int {
 		out.WriteString(" ")
 		out.WriteString(user.Uid)
 		out.WriteString("\" ")
-		out.Write(key.Keydata)
-
+		out.Write(key.Marshal())
 		os.Stdout.Write(out.Bytes())
 	}
 

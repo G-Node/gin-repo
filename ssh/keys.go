@@ -1,12 +1,12 @@
 package ssh
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -15,8 +15,9 @@ import (
 
 // Key represents an SSH public key
 type Key struct {
+	Type        string
 	Fingerprint string
-	Keysize     string
+	Keysize     int
 	Comment     string
 	Keydata     []byte
 }
@@ -42,35 +43,26 @@ func ReadKeysInDir(dir string) map[string]Key {
 			abspath = path
 		}
 
-		out, err := exec.Command("ssh-keygen", "-l", "-f"+abspath).CombinedOutput()
+		data, err := ioutil.ReadFile(abspath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[W] Skipping %s (%v:%s)\n", name, err, string(out))
+			fmt.Fprintf(os.Stderr, "[W] Skipping %s (%v)\n", name, err)
 			continue
 		}
 
-		components := strings.Split(string(out), " ")
-		if len(components) != 4 {
-			fmt.Fprintf(os.Stderr, "[W] Skipping %s", name)
-			continue
-		}
-
-		key := Key{Fingerprint: components[1],
-			Keysize: components[0],
-			Comment: components[2]}
-
-		data, err := ioutil.ReadFile(path)
+		key, err := ParseKey(data)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[W] Skipping %s", name)
+			fmt.Fprintf(os.Stderr, "[W] Skipping %s, parse error: %v", name, err)
 			continue
 		}
 
-		key.Keydata = data
 		keys[key.Fingerprint] = key
 	}
 
 	return keys
 }
 
+//ParseKey parses the public key data.
+//The fingerprint is calculated via SHA256
 func ParseKey(data []byte) (Key, error) {
 
 	pub, comment, _, _, err := ssh.ParseAuthorizedKey(data)
@@ -87,10 +79,25 @@ func ParseKey(data []byte) (Key, error) {
 
 	fingerprint := "SHA256:" + base64.RawStdEncoding.EncodeToString(sha.Sum(nil))
 
-	return Key{Fingerprint: fingerprint,
-		Keysize: fmt.Sprintf("%d", len(keydata)),
-		Comment: comment,
-		Keydata: keydata,
+	return Key{
+		Type:        pub.Type(),
+		Fingerprint: fingerprint,
+		Keysize:     len(keydata),
+		Comment:     comment,
+		Keydata:     keydata,
 	}, nil
 
+}
+
+//Marshal creates a string representation that can be used
+//in an authorized_keys file.
+func (key Key) Marshal() []byte {
+	data := &bytes.Buffer{}
+	data.WriteString(key.Type)
+	data.WriteByte(' ')
+	e := base64.NewEncoder(base64.StdEncoding, data)
+	e.Write(key.Keydata)
+	e.Close()
+	data.WriteByte('\n')
+	return data.Bytes()
 }
