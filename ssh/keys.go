@@ -89,9 +89,9 @@ func ParseKey(data []byte) (Key, error) {
 
 }
 
-//Marshal creates a string representation that can be used
+//MarshalAuthorizedKey creates a string representation that can be used
 //in an authorized_keys file.
-func (key Key) Marshal() []byte {
+func (key Key) MarshalAuthorizedKey() []byte {
 	data := &bytes.Buffer{}
 	data.WriteString(key.Type)
 	data.WriteByte(' ')
