@@ -45,7 +45,12 @@ func (store *GinAuthStore) LookupUserBySSH(fingerprint string) (*User, error) {
 		return nil, err
 	}
 
-	user := &User{Uid: acc.Login, Keys: []ssh.Key{{Keydata: []byte(acc.Key)}}}
+	key, err := ssh.ParseKey([]byte(acc.Key))
+	if err != nil {
+		return nil, err
+	}
+
+	user := &User{Uid: acc.Login, Keys: []ssh.Key{key}}
 	return user, nil
 }
 
