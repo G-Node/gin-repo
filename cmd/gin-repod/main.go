@@ -243,20 +243,28 @@ func main() {
 	usage := `gin repo daemon.
 
 Usage:
-  gin-repod
+  gin-repod [--listen=<address>]
   gin-repod make-token <user>
   gin-repod -h | --help
   gin-repod --version
 
 
 Options:
-  -h --help     Show this screen.
+  -h --help            Show this screen.
+  --version            Show version.
+  --listen=<address>   Address to listen on [default: :8082]
   `
 
-	args, _ := docopt.Parse(usage, nil, true, "gin repod 0.1a", false)
+	args, err := docopt.Parse(usage, nil, true, "gin repod 0.1a", false)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error while parsing command line: %v\n", err)
+		os.Exit(-1)
+	}
+
 	fmt.Println(args)
 
-	s := NewServer(":8888")
+	s := NewServer(args["--listen"].(string))
 	s.SetupRoutes()
 	s.SetupServiceSecret()
 	s.SetupStores()

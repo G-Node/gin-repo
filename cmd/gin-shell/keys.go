@@ -7,9 +7,16 @@ import (
 	"os/exec"
 
 	"github.com/G-Node/gin-repo/client"
+	"github.com/G-Node/gin-repo/ssh"
 )
 
-func cmdKeysSSHd(client *client.Client, fingerprint string) int {
+func cmdKeysSSHd(client *client.Client, key ssh.Key) int {
+
+	fingerprint, err := key.Fingerprint()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not create fingerprint: %v\n", err)
+		return 1
+	}
 
 	user, err := client.LookupUserByFingerprint(fingerprint)
 
@@ -29,10 +36,12 @@ func cmdKeysSSHd(client *client.Client, fingerprint string) int {
 		out.WriteString("command=\"")
 		out.WriteString(path)
 		out.WriteString(" ")
+		out.WriteString("-S ")
+		out.WriteString(client.Address)
+		out.WriteString(" ")
 		out.WriteString(user.Uid)
 		out.WriteString("\" ")
-		out.Write(key.Keydata)
-
+		out.Write(key.MarshalAuthorizedKey())
 		os.Stdout.Write(out.Bytes())
 	}
 

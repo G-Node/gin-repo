@@ -70,9 +70,16 @@ func (store *LocalUserStore) setup() error {
 		store.users[user.Uid] = &user
 		for _, key := range user.Keys {
 			//TODO: check if fingerprint is in index already?
-			store.key2User[key.Fingerprint] = &user
+
+			fingerprint, err := key.Fingerprint()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[W] fingerprint generation error: %v\n", err)
+				continue
+			}
+
+			store.key2User[fingerprint] = &user
 			fmt.Fprintf(os.Stderr, "[D] key2User: %s <- %q\n",
-				user.Uid, key.Fingerprint)
+				user.Uid, fingerprint)
 		}
 	}
 

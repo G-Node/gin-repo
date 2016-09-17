@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/user"
 
 	"github.com/G-Node/gin-repo/client"
+	"github.com/G-Node/gin-repo/ssh"
 	"github.com/docopt/docopt-go"
 )
 
@@ -13,30 +15,53 @@ func main() {
 	usage := `gin shell.
 
 Usage:
-  gin-shell --keys <fingerprint>
-  
-  gin-shell <uid>
-
+  gin-shell --keys <username> <keydata> [-S address]
+  gin-shell [-S address] <uid>
   gin-shell -h | --help
   gin-shell --version
 
 Options:
-  -h --help     Show this screen.
-  --version     Show version.
+  -h --help                     Show this screen.
+  --version                     Show version.
+  --keys                        Return the command for the ssh daemon to use.
+  -S address --server address   Address of the gin repo daemon [default: http://localhost:8082]
 `
-	args, _ := docopt.Parse(usage, nil, true, "gin shell 0.1a", false)
+	args, err := docopt.Parse(usage, nil, true, "gin shell 0.1a", false)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error while parsing cmd line: %v\n", err)
+		os.Exit(-1)
+	}
 
 	log.SetOutput(os.Stderr)
 
-	client := client.NewClient("http://localhost:8888")
+	client := client.NewClient(args["--server"].(string))
 
 	if token, err := makeServiceToken(); err == nil {
 		client.AuthToken = token
 	}
 
 	if val, ok := args["--keys"]; ok && val.(bool) {
-		fingerprint := args["<fingerprint>"].(string)
-		ret := cmdKeysSSHd(client, fingerprint)
+		keydata := args["<keydata>"].(string)
+		username := args["<username>"].(string)
+
+		user, err := user.Lookup(username)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error during user lookup: %v", err)
+			os.Exit(-1)
+		}
+
+		if user.Uid != fmt.Sprintf("%d", os.Getuid()) {
+			os.Exit(0)
+		}
+
+		sshkey, err := ssh.ParseKey([]byte(keydata))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not parse keydata: %v\n", err)
+			os.Exit(-1)
+		}
+
+		ret := cmdKeysSSHd(client, sshkey)
 		os.Exit(ret)
 	}
 
