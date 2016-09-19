@@ -384,6 +384,11 @@ func (s *Server) getBranch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+	if !ok {
+		return
+	}
+
 	repo, err := s.repos.OpenGitRepo(rid)
 
 	if err != nil {
@@ -420,6 +425,11 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+	if !ok {
 		return
 	}
 
