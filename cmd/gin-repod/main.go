@@ -14,6 +14,7 @@ import (
 	"github.com/G-Node/gin-repo/store"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/docopt/docopt-go"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -268,6 +269,11 @@ Options:
 	s.SetupRoutes()
 	s.SetupServiceSecret()
 	s.SetupStores()
+
+	s.Handler = handlers.CORS(
+		handlers.AllowedHeaders([]string{"Authorization", "Content-Type"}),
+		handlers.AllowedMethods([]string{"GET", "PUT", "POST", "DELETE"}),
+	)(s.Handler)
 
 	// this call might never return if there actually was
 	// a command line "command"
