@@ -18,7 +18,7 @@ func (s *Server) repoAccess(w http.ResponseWriter, r *http.Request) {
 	var query wire.RepoAccessQuery
 	err := decoder.Decode(&query)
 
-	if err != nil || query.Path == "" || query.User == "" {
+	if err != nil || query.Path == "" || query.User == "" || !checkName(query.User) {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(os.Stderr, "Error precessing request: %v", err)
 		return
@@ -31,6 +31,15 @@ func (s *Server) repoAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	level, err := s.repos.GetAccessLevel(rid, query.User)
+
+	if err != nil || level < store.PullAccess {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	//In case we are the Owner, we still have to check if the
+	//repo exists
 	repo, err := s.repos.OpenGitRepo(rid)
 
 	if err != nil {
