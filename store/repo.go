@@ -6,10 +6,18 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/G-Node/gin-repo/git"
 )
+
+var idChecker *regexp.Regexp
+
+func init() {
+	idChecker = regexp.MustCompile("^(?:/~/)?(?:/)?([0-9a-zA-Z][0-9a-zA-Z._-]{2,})/([0-9a-zA-Z][0-9a-zA-Z._@+-]*)(?:/)?$")
+}
+
 
 type RepoId struct {
 	Owner string
@@ -22,21 +30,13 @@ func (id RepoId) String() string {
 
 func RepoIdParse(str string) (RepoId, error) {
 
-	// FIXME: we are remove leading, trailing slashes
-	//        maybe that is not a good idea
-	str = strings.Trim(str, "/ ")
+	res := idChecker.FindStringSubmatch(str)
 
-	if count := strings.Count(str, "/"); count != 1 {
-		return RepoId{}, fmt.Errorf("malformed id: wrong number of components: %d", count)
+	if res == nil || len(res) != 3 {
+		return RepoId{}, fmt.Errorf("malformed repository id")
 	}
 
-	comps := strings.Split(str, "/")
-
-	if len(comps) != 2 {
-		panic("Have not exactly two components!")
-	}
-
-	return RepoId{comps[0], comps[1]}, nil
+	return RepoId{res[1], res[2]}, nil
 }
 
 func RepoIdFromPath(path string) (RepoId, error) {
