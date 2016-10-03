@@ -24,6 +24,7 @@ var repoids = []struct {
 	{"~/foo/bar/", nil},
 	{"//foo//", nil},
 	{"/~/foo", nil},
+	{"/~//foo/bar", nil},
 	{"/foo/bar/se", nil},
 	{"foo/bar/se/", nil},
 	{"foo/bar/se/foo/bar/se", nil},
