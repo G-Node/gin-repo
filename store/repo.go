@@ -15,9 +15,8 @@ import (
 var idChecker *regexp.Regexp
 
 func init() {
-	idChecker = regexp.MustCompile("^(?:/~/)?(?:/)?([0-9a-zA-Z][0-9a-zA-Z._-]{2,})/([0-9a-zA-Z][0-9a-zA-Z._@+-]*)(?:/)?$")
+	idChecker = regexp.MustCompile("^(?:/~/|/)?([0-9a-zA-Z][0-9a-zA-Z._-]{2,})/([0-9a-zA-Z][0-9a-zA-Z._@+-]*)(?:/)?$")
 }
-
 
 type RepoId struct {
 	Owner string
