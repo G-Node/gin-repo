@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/G-Node/gin-repo/auth"
@@ -25,7 +26,9 @@ func close(b io.ReadCloser) {
 
 func (store *GinAuthStore) LookupUserBySSH(fingerprint string) (*User, error) {
 
-	address := fmt.Sprintf("%s/api/keys/%s", store.URL, fingerprint)
+	q := &url.Values{}
+	q.Set("fingerprint", fingerprint)
+	address := fmt.Sprintf("%s/api/keys?%s", store.URL, q.Encode())
 	res, err := http.Get(address)
 
 	if err != nil {
