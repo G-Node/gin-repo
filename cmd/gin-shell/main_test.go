@@ -93,6 +93,7 @@ func TestMain(m *testing.M) {
 				{HostIP: "0.0.0.0", HostPort: "8082"},
 			},
 		},
+		Binds: []string{fmt.Sprintf("%s:/data", datadir)},
 	}
 
 	opts := docker.CreateContainerOptions{
@@ -113,8 +114,6 @@ func TestMain(m *testing.M) {
 	res := 1
 	var done time.Time
 	fmt.Fprintf(os.Stderr, "Container id: %q\n", c.ID)
-
-	hcfg.Binds = []string{fmt.Sprintf("%s:/data", datadir)}
 
 	err = dkr.StartContainer(c.ID, hcfg)
 	if err != nil {
