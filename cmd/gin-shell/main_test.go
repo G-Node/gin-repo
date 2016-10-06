@@ -1,20 +1,73 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/ssh"
+
 	"github.com/fsouza/go-dockerclient"
 )
 
-func TestWorks(t *testing.T) {
-	time.Sleep(10 * time.Second)
-	t.Logf("Seems working!")
+func TestSSHLogin(t *testing.T) {
+	key, err := ioutil.ReadFile("/tmp/grd-data/users/alice/alice.ssh.key")
+	if err != nil {
+		t.Fatalf("unable to read private key: %v", err)
+	}
+
+	signer, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		t.Fatalf("unable to parse private key: %v", err)
+	}
+
+	config := &ssh.ClientConfig{
+		User: "git",
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+	}
+
+	done := time.Now().Add(5 * time.Second)
+	var client *ssh.Client
+	for time.Now().Before(done) {
+		client, err = ssh.Dial("tcp", "localhost:2345", config)
+		if err == nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if err != nil {
+		t.Fatalf("failed to dial: " + err.Error())
+	}
+
+	session, err := client.NewSession()
+	if err != nil {
+		t.Fatalf("Failed to create session: " + err.Error())
+	}
+	defer session.Close()
+
+	// Once a Session is created, you can execute a single command on
+	// the remote side using the Run method.
+	var o bytes.Buffer
+	var e bytes.Buffer
+	session.Stdout = &o
+	session.Stderr = &e
+
+	err = session.Run("/usr/bin/whoami")
+	if err == nil {
+		t.Errorf("stderr: [%q], stdout: [%q]", e.String(), o.String())
+		t.Fatalf("successfully executed. Should not be possible!")
+	}
+
+	fmt.Fprintf(os.Stderr, "SSH: %q\n", e.String())
 }
 
 func FindContrib() (string, error) {
@@ -133,13 +186,12 @@ func TestMain(m *testing.M) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	fmt.Fprintf(os.Stderr, "Container: %v\n", c)
-
 	if !c.State.Running {
 		fmt.Fprintf(os.Stderr, "Timeout while waiting for container to start: %v\n", c.State)
 		goto remove_container
 	}
 
+	//Now lets get on with the tests
 	res = m.Run()
 
 	//tear down
