@@ -42,10 +42,6 @@ COPY ./contrib/supervisord.conf /etc/supervisord.conf
 EXPOSE 22 8888
 CMD ["supervisord", "-c/etc/supervisord.conf"]
 
-# To provision client keys for testing uncomment
-#  the following line:
-# COPY ./contrib/*.rsa* /data/
-
 RUN mkdir -p $GOPATH/src/github.com/G-Node/gin-repo
 WORKDIR $GOPATH/src/github.com/G-Node/gin-repo
 
@@ -55,3 +51,4 @@ RUN go install -v ./...
 
 RUN chown -R git:git /data
 WORKDIR /data
+VOLUME /data
