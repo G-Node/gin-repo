@@ -47,7 +47,7 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 
-	tmpdir := os.TempDir()
+	tmpdir := "/tmp"
 	datadir := filepath.Join(tmpdir, "grd-data")
 	err := os.MkdirAll(datadir, 0755)
 
