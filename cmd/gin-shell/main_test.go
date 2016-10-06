@@ -7,9 +7,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/fsouza/go-dockerclient"
 )
 
 func TestWorks(t *testing.T) {
+	time.Sleep(10 * time.Second)
 	t.Logf("Seems working!")
 }
 
@@ -72,5 +76,85 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "Could not run mkdata: %v\n", err)
 		os.Exit(1)
 	}
-	os.Exit(m.Run())
+
+	// now the container fun!
+	dkr, err := docker.NewClientFromEnv()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not connect to docker: %v\n", err)
+		os.Exit(1)
+	}
+
+	hcfg := &docker.HostConfig{
+		PortBindings: map[docker.Port][]docker.PortBinding{
+			"22/tcp": {
+				{HostIP: "0.0.0.0", HostPort: "2345"},
+			},
+			"8082/tcp": {
+				{HostIP: "0.0.0.0", HostPort: "8082"},
+			},
+		},
+	}
+
+	opts := docker.CreateContainerOptions{
+		Config: &docker.Config{
+			Image:        "gin-repod",
+			ExposedPorts: map[docker.Port]struct{}{"22/tcp": {}, "8082/tcp": {}},
+			//Volumes:      map[string]struct{}{"/data": {}},
+		},
+		HostConfig: hcfg,
+	}
+
+	c, err := dkr.CreateContainer(opts)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not create container: %v\n", err)
+		os.Exit(1)
+	}
+
+	res := 1
+	var done time.Time
+	fmt.Fprintf(os.Stderr, "Container id: %q\n", c.ID)
+
+	hcfg.Binds = []string{fmt.Sprintf("%s:/data", datadir)}
+
+	err = dkr.StartContainer(c.ID, hcfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Cannot start Docker container: %s", err)
+		goto remove_container
+	}
+
+	done = time.Now().Add(5 * time.Second)
+	for time.Now().Before(done) {
+		c, err = dkr.InspectContainer(c.ID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Cannot inspect docker: %s", err)
+			goto remove_container
+		} else if c.State.Running {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	fmt.Fprintf(os.Stderr, "Container: %v\n", c)
+
+	if !c.State.Running {
+		fmt.Fprintf(os.Stderr, "Timeout while waiting for container to start: %v\n", c.State)
+		goto remove_container
+	}
+
+	res = m.Run()
+
+	//tear down
+	if err = dkr.StopContainer(c.ID, 2000); err != nil {
+		fmt.Fprintf(os.Stderr, "cannot stop container: %s", err)
+	}
+
+remove_container:
+	if err := dkr.RemoveContainer(docker.RemoveContainerOptions{
+		ID:    c.ID,
+		Force: true,
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "cannot remove container: %s", err)
+	}
+
+	os.Exit(res)
 }
