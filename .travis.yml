@@ -9,6 +9,7 @@ go:
   - tip
 
 before_install:
+  - pushd contrib && ./hostkey.sh && popd
   - docker build -t gin-repod .
 
 install:
