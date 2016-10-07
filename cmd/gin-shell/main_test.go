@@ -194,6 +194,24 @@ func TestMain(m *testing.M) {
 	//Now lets get on with the tests
 	res = m.Run()
 
+	if res != 0 {
+		fmt.Fprintf(os.Stdout, "Container logs:\n")
+		err = dkr.Logs(docker.LogsOptions{
+			Container:    c.ID,
+			OutputStream: os.Stdout,
+			ErrorStream:  os.Stderr,
+			Stdout:       true,
+			Stderr:       true,
+
+			Follow: false,
+		})
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not get container logs: %s", err)
+		}
+		fmt.Fprintf(os.Stdout, "---- EOF ----\n")
+	}
+
 	//tear down
 	if err = dkr.StopContainer(c.ID, 2000); err != nil {
 		fmt.Fprintf(os.Stderr, "cannot stop container: %s", err)
