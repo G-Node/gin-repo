@@ -40,8 +40,12 @@ RUN mkdir /var/run/sshd && chmod 755 /var/run/sshd
 # use supervisord to start sshd and gin-repod
 COPY ./contrib/supervisord.conf /etc/supervisord.conf
 EXPOSE 22 8082
-CMD ["supervisord", "-c/etc/supervisord.conf"]
 
+# main startup script
+ADD ./contrib/main.sh /usr/local/bin/main.sh
+CMD ["/usr/local/bin/main.sh"]
+
+# now add the source, compile, install
 RUN mkdir -p $GOPATH/src/github.com/G-Node/gin-repo
 WORKDIR $GOPATH/src/github.com/G-Node/gin-repo
 
