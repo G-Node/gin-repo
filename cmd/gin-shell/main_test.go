@@ -146,13 +146,14 @@ func TestMain(m *testing.M) {
 				{HostIP: "0.0.0.0", HostPort: "8082"},
 			},
 		},
-		Binds: []string{fmt.Sprintf("%s:/data", datadir)},
+		//Binds: []string{fmt.Sprintf("%s:/data", datadir)},
 	}
 
 	opts := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			Image:        "gin-repod",
 			ExposedPorts: map[docker.Port]struct{}{"22/tcp": {}, "8082/tcp": {}},
+			Env:          []string{"GRD_GENDATA=1"},
 			//Volumes:      map[string]struct{}{"/data": {}},
 		},
 		HostConfig: hcfg,
