@@ -9,7 +9,7 @@ RUN apt-get update &&                                   \
                        python-pip python-setuptools     \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install supervisor
+RUN pip install supervisor pyyaml
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH
