@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 )
+
+var aliceKey []byte
 
 func TestSSHLogin(t *testing.T) {
 	key, err := ioutil.ReadFile("/tmp/grd-data/users/alice/alice.ssh.key")
@@ -148,6 +151,55 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "Timeout while waiting for container to start: %v\n", c.State)
 		BailOut(dkr, c.ID, 1)
 	}
+
+	//wait until the container is up and can serve http request
+	//i.e. the data creation script is done in the container
+	hcl := &http.Client{Timeout: 20 * time.Second}
+	req, err := http.NewRequest("GET", "http://localhost:8082", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not create http request: %v\n", err)
+		os.Exit(1)
+	}
+
+	done = time.Now().Add(20 * time.Second)
+	for time.Now().Before(done) {
+		_, err = hcl.Do(req)
+		if err == nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	exec, err := dkr.CreateExec(docker.CreateExecOptions{
+		Cmd:       []string{"cat", "/data/users/alice/alice.ssh.key"},
+		Container: c.ID,
+		//Tty:       false,
+
+		AttachStdout: true,
+		AttachStderr: true,
+	})
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not create exec %v\n", c.State)
+		BailOut(dkr, c.ID, 1)
+	}
+
+	var o bytes.Buffer
+	var e bytes.Buffer
+
+	err = dkr.StartExec(exec.ID, docker.StartExecOptions{
+		OutputStream: &o,
+		ErrorStream:  &e,
+		//Tty:          false,
+	})
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not start exec container: %v\n", err)
+		BailOut(dkr, c.ID, 1)
+	}
+
+	aliceKey = o.Bytes()
+	fmt.Fprintf(os.Stderr, "Exec: %q, key: %q\n", e.String(), aliceKey)
 
 	//Now lets get on with the tests
 	res = m.Run()
