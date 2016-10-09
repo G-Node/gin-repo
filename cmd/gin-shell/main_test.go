@@ -68,6 +68,17 @@ func TestSSHLogin(t *testing.T) {
 	fmt.Fprintf(os.Stderr, "SSH: %q\n", e.String())
 }
 
+func BailOut(dkr *docker.Client, container string, res int) {
+	if err := dkr.RemoveContainer(docker.RemoveContainerOptions{
+		ID:    container,
+		Force: true,
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "cannot remove container: %s", err)
+	}
+
+	os.Exit(res)
+}
+
 func TestMain(m *testing.M) {
 	flag.Parse()
 
@@ -118,7 +129,7 @@ func TestMain(m *testing.M) {
 	err = dkr.StartContainer(c.ID, hcfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot start Docker container: %s", err)
-		goto remove_container
+		BailOut(dkr, c.ID, 1)
 	}
 
 	done = time.Now().Add(5 * time.Second)
@@ -126,7 +137,7 @@ func TestMain(m *testing.M) {
 		c, err = dkr.InspectContainer(c.ID)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Cannot inspect docker: %s", err)
-			goto remove_container
+			BailOut(dkr, c.ID, 1)
 		} else if c.State.Running {
 			break
 		}
@@ -135,7 +146,7 @@ func TestMain(m *testing.M) {
 
 	if !c.State.Running {
 		fmt.Fprintf(os.Stderr, "Timeout while waiting for container to start: %v\n", c.State)
-		goto remove_container
+		BailOut(dkr, c.ID, 1)
 	}
 
 	//Now lets get on with the tests
@@ -159,18 +170,5 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stdout, "---- EOF ----\n")
 	}
 
-	//tear down
-	if err = dkr.StopContainer(c.ID, 2000); err != nil {
-		fmt.Fprintf(os.Stderr, "cannot stop container: %s", err)
-	}
-
-remove_container:
-	if err := dkr.RemoveContainer(docker.RemoveContainerOptions{
-		ID:    c.ID,
-		Force: true,
-	}); err != nil {
-		fmt.Fprintf(os.Stderr, "cannot remove container: %s", err)
-	}
-
-	os.Exit(res)
+	BailOut(dkr, c.ID, 0)
 }
