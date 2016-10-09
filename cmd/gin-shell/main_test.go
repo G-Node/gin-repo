@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
@@ -18,12 +17,8 @@ import (
 var aliceKey []byte
 
 func TestSSHLogin(t *testing.T) {
-	key, err := ioutil.ReadFile("/tmp/grd-data/users/alice/alice.ssh.key")
-	if err != nil {
-		t.Fatalf("unable to read private key: %v", err)
-	}
 
-	signer, err := ssh.ParsePrivateKey(key)
+	signer, err := ssh.ParsePrivateKey(aliceKey)
 	if err != nil {
 		t.Fatalf("unable to parse private key: %v", err)
 	}
