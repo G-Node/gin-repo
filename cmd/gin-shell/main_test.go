@@ -77,6 +77,37 @@ func BailOut(dkr *docker.Client, container string, res int) {
 	os.Exit(res)
 }
 
+func ExtractPrivateKey(dkr *docker.Client, container string, user string) ([]byte, error) {
+	path := fmt.Sprintf("/data/users/%[1]s/%[1]s.ssh.key", user)
+	exec, err := dkr.CreateExec(docker.CreateExecOptions{
+		Cmd:       []string{"cat", path},
+		Container: container,
+		//Tty:       false,
+
+		AttachStdout: true,
+		AttachStderr: true,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("could not create exec: %v\n", err)
+	}
+
+	var o bytes.Buffer
+	var e bytes.Buffer
+
+	err = dkr.StartExec(exec.ID, docker.StartExecOptions{
+		OutputStream: &o,
+		ErrorStream:  &e,
+		//Tty:          false,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("could not start exec container: %v\n", err)
+	}
+
+	return o.Bytes(), nil
+}
+
 func TestMain(m *testing.M) {
 	flag.Parse()
 
@@ -165,36 +196,11 @@ func TestMain(m *testing.M) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	exec, err := dkr.CreateExec(docker.CreateExecOptions{
-		Cmd:       []string{"cat", "/data/users/alice/alice.ssh.key"},
-		Container: c.ID,
-		//Tty:       false,
-
-		AttachStdout: true,
-		AttachStderr: true,
-	})
-
+	aliceKey, err = ExtractPrivateKey(dkr, c.ID, "alice")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not create exec %v\n", c.State)
+		fmt.Fprintf(os.Stderr, "could not get priv key for alice: %v", err)
 		BailOut(dkr, c.ID, 1)
 	}
-
-	var o bytes.Buffer
-	var e bytes.Buffer
-
-	err = dkr.StartExec(exec.ID, docker.StartExecOptions{
-		OutputStream: &o,
-		ErrorStream:  &e,
-		//Tty:          false,
-	})
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not start exec container: %v\n", err)
-		BailOut(dkr, c.ID, 1)
-	}
-
-	aliceKey = o.Bytes()
-	fmt.Fprintf(os.Stderr, "Exec: %q, key: %q\n", e.String(), aliceKey)
 
 	//Now lets get on with the tests
 	res = m.Run()
