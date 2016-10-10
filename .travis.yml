@@ -1,8 +1,21 @@
 language: go
+sudo: required
+dist: trusty
+
+services:
+  - docker
 
 go:
-  - 1.6
+  - 1.7
   - tip
+
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install git-annex
+  - sudo apt-get install python3-pip
+  - pip3 install pyyaml
+  - pushd contrib && ./hostkey.sh && popd
+  - docker build -t gin-repod .
 
 install:
   - go get "github.com/docopt/docopt-go"
@@ -11,3 +24,4 @@ install:
   - go get "github.com/gorilla/handlers"
   - go get "github.com/dgrijalva/jwt-go"
   - go get "golang.org/x/crypto/ssh"
+  - go get "github.com/fsouza/go-dockerclient"
