@@ -100,3 +100,15 @@ func (s *Server) lookupUser(w http.ResponseWriter, r *http.Request) {
 		s.log(PANIC, "lookupUser: IO error: %v", err)
 	}
 }
+
+func (s *Server) hookPreReceive(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) hookUpdate(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) hookPostReceive(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}

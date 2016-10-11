@@ -212,6 +212,10 @@ func (s *Server) SetupRoutes() {
 	r.HandleFunc("/intern/user/lookup", s.lookupUser).Methods("GET")
 	r.HandleFunc("/intern/repos/access", s.repoAccess).Methods("POST")
 
+	r.HandleFunc("/intern/hooks/pre-receive", s.hookPreReceive).Methods("POST")
+	r.HandleFunc("/intern/hooks/update", s.hookUpdate).Methods("POST")
+	r.HandleFunc("/intern/hooks/post-receive", s.hookPostReceive).Methods("POST")
+
 	r.HandleFunc("/repos/public", s.listPublicRepos).Methods("GET")
 
 	r.HandleFunc("/users/{user}/repos", s.createRepo).Methods("POST")
