@@ -257,6 +257,16 @@ func (d *Delta) Patch(r io.ReadSeeker, w io.Writer) error {
 	return d.Err()
 }
 
+//SkipOp prepares the delta stream to move to the next operation
+//without actually carrying out the delta operation. Useful for
+//printing the delta stream.
+func (d *Delta) SkipOp() {
+	op := d.Op()
+	if op.Op == DeltaOpInsert {
+		_, d.err = io.CopyN(ioutil.Discard, d.source, op.Size)
+	}
+}
+
 type deltaChain struct {
 	baseObj gitObject
 	baseOff int64
