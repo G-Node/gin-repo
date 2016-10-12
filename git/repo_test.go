@@ -148,7 +148,7 @@ func TestObjectForPath(t *testing.T) {
 		if tt.err && err == nil {
 			t.Fatalf("ObjectForPath(%.7q, %q) => no error but expected one", tt.root, tt.path)
 		} else if !tt.err && err != nil {
-			t.Fatalf("ObjectForPath(%.7q, %q) => error %v, wanted %s obj", tt.root, tt.path, err, tt.otype)
+			t.Fatalf("ObjectForPath(%.7q, %q) => error: %v, wanted %s obj", tt.root, tt.path, err, tt.otype)
 		} else if !tt.err && obj.Type() != tt.otype {
 			t.Fatalf("Expected %s object, got %s", tt.otype, obj.Type())
 		}

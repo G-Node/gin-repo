@@ -42,7 +42,7 @@ func TestPackBasic(t *testing.T) {
 					t.Fatalf("could not read sha1 at pos %d: %v", k, err)
 				}
 
-				t.Logf("\t obj %s", oid)
+				//t.Logf("\t obj %s", oid)
 
 				//we use FindOffset, not ReadOffset, to test the
 				//search functionality
