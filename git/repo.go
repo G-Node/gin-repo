@@ -303,7 +303,13 @@ func (repo *Repository) ObjectForPath(root Object, pathstr string) (Object, erro
 			}
 		}
 
-		if id == nil {
+		if err = tree.Err(); err != nil {
+			cwd := strings.Join(comps[:i+1], "/")
+			return nil, &os.PathError{
+				Op:   "find object",
+				Path: cwd,
+				Err:  err}
+		} else if id == nil {
 			cwd := strings.Join(comps[:i+1], "/")
 			return nil, &os.PathError{
 				Op:   "find object",
