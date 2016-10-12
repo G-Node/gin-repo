@@ -23,6 +23,22 @@ type Delta struct {
 	err error
 }
 
+func readByte(r io.Reader) (byte, error) {
+	var err error
+	n := 0
+	var b [1]byte
+
+	for n != 1 && err == nil {
+		n, err = r.Read(b[:])
+	}
+
+	if n != 1 {
+		return 0, err
+	}
+
+	return b[0], nil
+}
+
 func parseDelta(obj gitObject) (*Delta, error) {
 	delta := Delta{gitObject: obj}
 
@@ -94,15 +110,16 @@ func readVarSize(r io.Reader, offset uint) (int64, error) {
 
 func decodeInt(r io.Reader, b byte, l uint) (size int64, err error) {
 
-	var d [1]byte
 	for i := uint(0); i < l; i++ {
+
 		if b&(1<<i) != 0 {
-			_, err = r.Read(d[:])
+			var d byte
+			d, err = readByte(r)
 			if err != nil {
 				return
 			}
 
-			size |= int64(d[0]) << (i * 8)
+			size |= int64(d) << (i * 8)
 		}
 	}
 
@@ -175,40 +192,42 @@ func (d *Delta) Err() error {
 //NextOp reads the next DeltaOp from the delta data stream.
 //Returns false when there are no operations left or on error;
 //use Err() to decide between the two cases.
-func (d *Delta) NextOp() (ok bool) {
-	var b [1]byte
-	_, err := d.source.Read(b[:])
+func (d *Delta) NextOp() bool {
 
-	if err != nil {
-		return
+	if d.err != nil {
+		return false
 	}
 
-	if b[0]&0x80 != 0 {
+	b, err := readByte(d.source)
+	if err != nil {
+		return false
+	}
+
+	if b&0x80 != 0 {
 		d.op.Op = DeltaOpCopy
-		op := b[0]
+		op := b & 0x7F
 		d.op.Offset, d.err = decodeInt(d.source, op, 4)
-		if err != nil {
-			return
+		if d.err != nil {
+			return false
 		}
 
-		d.op.Size, err = decodeInt(d.source, op>>4, 3)
-		if err != nil {
-			return
+		d.op.Size, d.err = decodeInt(d.source, op>>4, 3)
+		if d.err != nil {
+			return false
 		}
 
 		if d.op.Size == 0 {
 			d.op.Size = 0x10000
 		}
-		ok = true
-	} else if n := b[0]; n > 0 {
+	} else if n := b; n > 0 {
 		d.op.Op = DeltaOpInsert
 		d.op.Size = int64(n)
-		ok = true
 	} else {
 		d.err = fmt.Errorf("git: unknown delta op code")
+		return false
 	}
 
-	return
+	return true
 }
 
 //Patch applies the delta data onto r and writes the result to w.
@@ -235,7 +254,7 @@ func (d *Delta) Patch(r io.ReadSeeker, w io.Writer) error {
 		}
 	}
 
-	return nil
+	return d.Err()
 }
 
 type deltaChain struct {
@@ -326,7 +345,6 @@ func (c *deltaChain) resolve() (Object, error) {
 	}
 
 	//ibuf is holding the data
-
 	obj := gitObject{c.baseObj.otype, int64(ibuf.Len()), ioutil.NopCloser(ibuf)}
 	return parseObject(obj)
 }
