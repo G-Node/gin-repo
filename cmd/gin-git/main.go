@@ -143,6 +143,10 @@ func showDelta(repo *git.Repository, packid string, idstr string) {
 		}
 	}
 
+	if err = delta.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "%s   └─ Error: %v", pf, err)
+	}
+
 }
 
 func printObject(obj git.Object, prefix string) {
