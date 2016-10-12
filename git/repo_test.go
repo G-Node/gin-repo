@@ -111,3 +111,52 @@ func TestRepoAnnexBasic(t *testing.T) {
 		t.Logf("[W] Could not remove test git dir: %q", repo.Path)
 	}
 }
+
+var ofptests = []struct {
+	path  string
+	otype ObjectType
+	err   bool
+}{
+	{"/git/repo_test.go", ObjBlob, false}, // this is us!
+	{"/git", ObjTree, false},              // our parent dir
+	{"/cmd/gin-shell/main.go", ObjBlob, false},
+	{"NONEXISTANT/PATH/FOOBAR", ObjTree, true},
+}
+
+func TestObjectForPath(t *testing.T) {
+	repo, err := DiscoverRepository()
+
+	if err != nil {
+		t.Skip("[W] Not in git directory. Skipping test")
+	}
+
+	oid, _ := ParseSHA1("9c3409e9225137bcccf070e1bb583b808da37003")
+	obj, err := repo.OpenObject(oid)
+
+	if err != nil {
+		t.Skip("Could not open known commit. Skipping test.")
+	}
+
+	commit := obj.(*Commit)
+
+	for _, tt := range ofptests {
+		obj, err = repo.ObjectForPath(commit, tt.path)
+
+		if tt.err && err == nil {
+			t.Fatalf("ObjectForPath(%q) => no error but expected one", tt.path)
+		} else if !tt.err && err != nil {
+			t.Fatalf("ObjectForPath(%q) => error %v, wanted %s obj", tt.path, err, tt.otype)
+		} else if !tt.err && obj.Type() != tt.otype {
+			t.Fatalf("Expected %s object, got %s", tt.otype, obj.Type())
+		}
+
+		//looking good
+
+		if err == nil {
+			t.Logf("ObjectForPath(%q) => %s [OK!]", tt.path, obj.Type())
+		} else {
+			t.Logf("ObjectForPath(%q) => expected error(%q) [OK!]", tt.path, err)
+		}
+	}
+
+}
