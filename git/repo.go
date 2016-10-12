@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -252,4 +253,61 @@ func (repo *Repository) Readlink(id SHA1) (string, error) {
 	}
 
 	return string(data), nil
+}
+
+//ObjectForPath will resolve the path to an object
+//for the file tree starting in the root Commit
+func (repo *Repository) ObjectForPath(root *Commit, pathstr string) (Object, error) {
+	cleaned := path.Clean(strings.Trim(pathstr, " /"))
+	comps := strings.Split(cleaned, "/")
+
+	node, err := repo.OpenObject(root.Tree)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not root tree object: %v", err)
+	}
+
+	var i int
+	for i = 0; i < len(comps); i++ {
+
+		tree, ok := node.(*Tree)
+		if !ok {
+			cwd := strings.Join(comps[:i+1], "/")
+			err := &os.PathError{
+				Op:   "convert git.Object to git.Tree",
+				Path: cwd,
+				Err:  fmt.Errorf("expected tree object, got %s", node.Type()),
+			}
+			return nil, err
+		}
+
+		var id *SHA1
+		for tree.Next() {
+			entry := tree.Entry()
+			if entry.Name == comps[i] {
+				id = &entry.ID
+				break
+			}
+		}
+
+		if id == nil {
+			cwd := strings.Join(comps[:i+1], "/")
+			return nil, &os.PathError{
+				Op:   "find object",
+				Path: cwd,
+				Err:  os.ErrNotExist}
+		}
+
+		node, err = repo.OpenObject(*id)
+		if err != nil {
+			cwd := strings.Join(comps[:i+1], "/")
+			return nil, &os.PathError{
+				Op:   "open object",
+				Path: cwd,
+				Err:  err,
+			}
+		}
+	}
+
+	return node, nil
 }
