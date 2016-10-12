@@ -166,7 +166,10 @@ func (d *Delta) Op() DeltaOp {
 
 //Err retrieves the current error state, if any
 func (d *Delta) Err() error {
-	return d.err
+	if err := d.err; err != io.EOF {
+		return err
+	}
+	return nil
 }
 
 //NextOp reads the next DeltaOp from the delta data stream.
