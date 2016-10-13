@@ -441,6 +441,10 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.objectToWire(w, repo, obj)
+}
+
+func (s *Server) objectToWire(w http.ResponseWriter, repo *git.Repository, obj git.Object) {
 	out := bufio.NewWriter(w)
 	switch obj := obj.(type) {
 	case *git.Commit:
@@ -513,7 +517,7 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 			n = m
 		}
 		buf := make([]byte, n)
-		_, err = obj.Read(buf[:])
+		_, err := obj.Read(buf[:])
 		if err != nil {
 			panic("IO error")
 		}
@@ -521,7 +525,7 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", mtype)
 
 		w.Write(buf)
-		_, err := io.Copy(w, obj)
+		_, err = io.Copy(w, obj)
 		if err != nil {
 			s.log(WARN, "io error, but data already written")
 		}
