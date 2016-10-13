@@ -1,56 +1,62 @@
 
-:token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE0NzAwNjMyMDcsImlhdCI6MTQ3MDA2MjkwNywiaXNzIjoiZ2luLXJlcG9AcGV3dGVyLmNucy5iem0iLCJyb2xlIjoiZ2ljbW8ifQ.SDLNvxeds8zCt5fZpK94u-OWIijzkxE2tMbAbDrDzqY
+:token = 
 
-GET http://localhost:8888/intern/user/lookup?key=SHA256:i%2BUd3rH5q16tUNdfzGxq20fYYfegE9ef0HhP5sl2LIs
+GET http://localhost:8082/intern/user/lookup?key=SHA256:i%2BUd3rH5q16tUNdfzGxq20fYYfegE9ef0HhP5sl2LIs
 Authorization: Bearer :token
 
 #
 # List public repositories
 #
 
-GET http://localhost:8888/repos/public
+GET http://localhost:8082/repos/public
 
+#
+# List repositories shared with logged-in user
+#
+
+GET http://localhost:8082/repos/shared
+Authorization: Bearer :token
 
 #
 # List repositories for a user
 #
 
-GET http://localhost:8888/users/gicmo/repos
+GET http://localhost:8082/users/gicmo/repos
 Authorization: Bearer :token
 
 #
 # Get Branch
 #
 
-GET http://localhost:8888/users/gicmo/repos/exrepo/branches/master
+GET http://localhost:8082/users/gicmo/repos/exrepo/branches/master
 Authorization: Bearer :token
 
 #
 # Get Object (commit object)
 #
 
-GET http://localhost:8888/users/gicmo/repos/exrepo/objects/ac6e8e456c01ee7193633b34b9554a3095cfe78a
+GET http://localhost:8082/users/gicmo/repos/exrepo/objects/ac6e8e456c01ee7193633b34b9554a3095cfe78a
 Authorization: Bearer :token
 
 #
 # Get Object (tree)
 #
 
-GET http://localhost:8888/users/gicmo/repos/exrepo/objects/2ef26eab63d0a09c9a53ad5df01701396e72c3f4
+GET http://localhost:8082/users/gicmo/repos/exrepo/objects/2ef26eab63d0a09c9a53ad5df01701396e72c3f4
 Authorization: Bearer :token
 
 #
 # Get Visibility
 #
 
-GET http://localhost:8888/users/gicmo/repos/exrepo/visibility
+GET http://localhost:8082/users/gicmo/repos/exrepo/visibility
 Authorization: Bearer :token
 
 #
 # Set Visibility
 #
 
-PUT http://localhost:8888/users/gicmo/repos/exrepo/visibility
+PUT http://localhost:8082/users/gicmo/repos/exrepo/visibility
 Authorization: Bearer :token
 Content-Type: application/json
 
