@@ -295,6 +295,13 @@ func (repo *Repository) ObjectForPath(root Object, pathstr string) (Object, erro
 			return nil, err
 		}
 
+		//Since we call path.Clean(), this should really
+		//only happen at the root, but it is safe to
+		//have here anyway
+		if comps[i] == "." || comps[i] == "/" {
+			continue
+		}
+
 		var id *SHA1
 		for tree.Next() {
 			entry := tree.Entry()

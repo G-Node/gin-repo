@@ -119,6 +119,8 @@ var ofptests = []struct {
 	err   bool
 }{
 	// 9c3409e9225137bcccf070e1bb583b808da37003 is a commit object
+	{"9c3409e9225137bcccf070e1bb583b808da37003", "/", ObjTree, false},                 // the root
+	{"9c3409e9225137bcccf070e1bb583b808da37003", "", ObjTree, false},                  // the root
 	{"9c3409e9225137bcccf070e1bb583b808da37003", "/git/repo_test.go", ObjBlob, false}, // this is us!
 	{"9c3409e9225137bcccf070e1bb583b808da37003", "/git", ObjTree, false},              // our parent dir
 	{"9c3409e9225137bcccf070e1bb583b808da37003", "/cmd/gin-shell/main.go", ObjBlob, false},
