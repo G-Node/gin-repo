@@ -141,6 +141,12 @@ func showDelta(repo *git.Repository, packid string, idstr string) {
 		case git.DeltaOpInsert:
 			fmt.Printf("%s    ├─ Insert %d\n", pf, op.Size)
 		}
+
+		delta.SkipOp()
+	}
+
+	if err = delta.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "%s   └─ Error: %v", pf, err)
 	}
 
 }
