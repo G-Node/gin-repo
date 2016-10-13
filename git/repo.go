@@ -256,12 +256,25 @@ func (repo *Repository) Readlink(id SHA1) (string, error) {
 }
 
 //ObjectForPath will resolve the path to an object
-//for the file tree starting in the root Commit
-func (repo *Repository) ObjectForPath(root *Commit, pathstr string) (Object, error) {
+//for the file tree starting in the node root.
+//The root object can be either a Commit, Tree or Tag.
+func (repo *Repository) ObjectForPath(root Object, pathstr string) (Object, error) {
 	cleaned := path.Clean(strings.Trim(pathstr, " /"))
 	comps := strings.Split(cleaned, "/")
 
-	node, err := repo.OpenObject(root.Tree)
+	var node Object
+	var err error
+
+	switch o := root.(type) {
+	case *Tree:
+		node = root
+	case *Commit:
+		node, err = repo.OpenObject(o.Tree)
+	case *Tag:
+		node, err = repo.OpenObject(o.Object)
+	default:
+		return nil, fmt.Errorf("unsupported root object type")
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("could not root tree object: %v", err)
