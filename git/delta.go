@@ -351,6 +351,10 @@ func (c *deltaChain) resolve() (Object, error) {
 			return nil, err
 		}
 
+		if lk.SizeTarget != int64(obuf.Len()) {
+			return nil, fmt.Errorf("git: size mismatch while patching delta object")
+		}
+
 		obuf, ibuf = ibuf, obuf
 	}
 
