@@ -217,6 +217,7 @@ func (s *Server) SetupRoutes() {
 	r.HandleFunc("/intern/hooks/post-receive", s.hookPostReceive).Methods("POST")
 
 	r.HandleFunc("/repos/public", s.listPublicRepos).Methods("GET")
+	r.HandleFunc("/repos/shared", s.listSharedRepos).Methods("GET")
 
 	r.HandleFunc("/users/{user}/repos", s.createRepo).Methods("POST")
 	r.HandleFunc("/users/{user}/repos", s.listRepos).Methods("GET")

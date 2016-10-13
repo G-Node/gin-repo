@@ -180,6 +180,58 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) listSharedRepos(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.checkAccess(w, r, store.RepoId{}, store.NoAccess)
+	if !ok {
+		return
+	}
+
+	ids, err := s.repos.ListSharedRepos(user.Uid)
+
+	//TODO: the following is duplicated code
+	if os.IsExist(err) || len(ids) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var repos []wire.Repo
+	for _, p := range ids {
+		repo, err := s.repos.OpenGitRepo(p)
+
+		if err != nil {
+			s.log(WARN, "could not open repo @ %q", p)
+			continue
+		}
+
+		wr, err := s.repoToWire(p, repo)
+
+		if err != nil {
+			s.log(WARN, "repo serialization error for %q [%v]", p, err)
+			continue
+		}
+
+		repos = append(repos, wr)
+	}
+
+	if len(repos) == 0 {
+		http.Error(w, "No repositories found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	js := json.NewEncoder(w)
+	err = js.Encode(repos)
+
+	if err != nil {
+		s.log(WARN, "Error while encoding, status already sent. oh oh.")
+	}
+}
+
 func (s *Server) listPublicRepos(w http.ResponseWriter, r *http.Request) {
 	ids, err := s.repos.ListPublicRepos()
 
