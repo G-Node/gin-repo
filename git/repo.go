@@ -259,8 +259,6 @@ func (repo *Repository) Readlink(id SHA1) (string, error) {
 //for the file tree starting in the node root.
 //The root object can be either a Commit, Tree or Tag.
 func (repo *Repository) ObjectForPath(root Object, pathstr string) (Object, error) {
-	cleaned := path.Clean(strings.Trim(pathstr, " /"))
-	comps := strings.Split(cleaned, "/")
 
 	var node Object
 	var err error
@@ -279,6 +277,9 @@ func (repo *Repository) ObjectForPath(root Object, pathstr string) (Object, erro
 	if err != nil {
 		return nil, fmt.Errorf("could not root tree object: %v", err)
 	}
+
+	cleaned := path.Clean(strings.Trim(pathstr, " /"))
+	comps := strings.Split(cleaned, "/")
 
 	var i int
 	for i = 0; i < len(comps); i++ {
