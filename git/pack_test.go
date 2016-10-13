@@ -62,11 +62,28 @@ func TestPackBasic(t *testing.T) {
 					t.Fatalf("offset returned by FindOffset differs from ReadOffset")
 				}
 
-				_, err = data.OpenObject(off)
+				obj, err := data.OpenObject(off)
 
 				if err != nil {
 					t.Fatalf("could not open object (%s) at %d: %v", oid, k, err)
 				}
+
+				if IsDeltaObject(obj.Type()) {
+					//t.Logf("checking delta obj: %q", oid)
+					delta := obj.(*Delta)
+					chain, err := buildDeltaChain(delta, repo)
+
+					if err != nil {
+						t.Fatalf("building delta chain failed for %q: %v", oid, err)
+					}
+
+					_, err = chain.resolve()
+
+					if err != nil {
+						t.Fatalf("resolving delta chain failed for %q: %v", oid, err)
+					}
+				}
+
 			}
 		}
 
