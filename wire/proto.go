@@ -17,7 +17,9 @@ type CreateRepo struct {
 
 type Repo struct {
 	Name        string
+	Owner       string
 	Description string
+	Visibility  bool
 	Head        string
 }
 

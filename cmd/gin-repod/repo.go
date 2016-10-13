@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/gorilla/mux"
 
@@ -90,30 +89,21 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func repoToWire(repo *git.Repository) (wire.Repo, error) {
-	basename := filepath.Base(repo.Path)
-	name := basename[:len(basename)-len(filepath.Ext(basename))]
+func (s *Server) repoToWire(id store.RepoId, repo *git.Repository) (wire.Repo, error) {
 
-	head, err := repo.OpenRef("HEAD")
+	public, err := s.repos.GetRepoVisibility(id)
 	if err != nil {
-		return wire.Repo{}, err
-	}
-
-	//HEAD must be a symbolic ref
-	symhead := head.(*git.SymbolicRef)
-	targetName := symhead.Fullname()
-
-	//FIXME: git rev-parse based OpenRef doesn't work with
-	// empty repos, workaround: return HEAD
-	target, err := repo.OpenRef(symhead.Symbol)
-	if err == nil {
-		targetName = target.Fullname()
+		s.log(WARN, "could not get repo visibility: %v", err)
+		public = false
 	}
 
 	wr := wire.Repo{
-		Name:        name,
+		Name:        id.Name,
+		Owner:       id.Owner,
 		Description: repo.ReadDescription(),
-		Head:        targetName}
+		Head:        "master",
+		Visibility:  public,
+	}
 
 	return wr, nil
 }
@@ -164,7 +154,7 @@ func (s *Server) listRepos(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		wr, err := repoToWire(repo)
+		wr, err := s.repoToWire(p, repo)
 
 		if err != nil {
 			s.log(WARN, "repo serialization error for %q [%v]", p, err)
@@ -210,7 +200,7 @@ func (s *Server) listPublicRepos(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		wr, err := repoToWire(repo)
+		wr, err := s.repoToWire(p, repo)
 
 		if err != nil {
 			s.log(WARN, "repo serialization error for %q [%v]", p, err)
