@@ -79,3 +79,45 @@ func (c *Commit) WriteTo(writer io.Writer) (int64, error) {
 	err = w.Flush()
 	return n, err
 }
+
+//WriteTo writes the tree object to the writer in the on-disk format
+//i.e. as it would be stored in the git objects dir (although uncompressed).
+func (t *Tree) WriteTo(writer io.Writer) (int64, error) {
+
+	w := bufio.NewWriter(writer)
+
+	n, err := writeHeader(t, w)
+	if err != nil {
+		return n, err
+	}
+
+	for t.Next() {
+		//format is: [mode{ASCII, octal}][space][name][\0][SHA1]
+		entry := t.Entry()
+		line := fmt.Sprintf("%o %s", entry.Mode, entry.Name)
+		x, err := w.WriteString(line)
+		n += int64(x)
+		if err != nil {
+			return n, err
+		}
+
+		err = w.WriteByte(0)
+		if err != nil {
+			return n, err
+		}
+		n++
+
+		x, err = w.Write(entry.ID[:])
+		n += int64(x)
+		if err != nil {
+			return n, err
+		}
+	}
+
+	if err = t.Err(); err != nil {
+		return n, err
+	}
+
+	err = w.Flush()
+	return n, err
+}
