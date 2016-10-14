@@ -144,7 +144,7 @@ func (repo *Repository) Astat(target string) (*AnnexStat, error) {
 	p := filepath.Join(repo.Path, "annex", "objects", ki.HashDirLower(), ki.Key, ki.Key)
 	fi, err := os.Stat(p)
 
-	if err != nil {
+	if err == nil {
 		sbuf.Have = true
 		sbuf.Size = fi.Size()
 	} else if os.IsNotExist(err) {
