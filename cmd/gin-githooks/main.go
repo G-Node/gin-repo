@@ -1,22 +1,37 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 
+	"bufio"
+	"github.com/G-Node/gin-repo/auth"
+	"github.com/G-Node/gin-repo/client"
+	"github.com/G-Node/gin-repo/wire"
 	"github.com/docopt/docopt-go"
 )
 
-type gitHook struct {
-	Name     string   `json:"name,omitempty"`
-	Args     []string `json:"args,omitempty"`
-	RepoPath string   `json:"repopath,omitempty"`
+func makeServiceToken() (string, error) {
+
+	secret, err := auth.ReadSharedSecret()
+
+	if err != nil {
+		return "", fmt.Errorf("could not load secret: %v", err)
+	}
+
+	return auth.MakeServiceToken(secret)
 }
+
+const (
+	hooknameToPath = map[string]string{
+		"pre-receive":  "/intern/hooks/fire",
+		"update":       "/intern/hooks/fire",
+		"post-receive": "/intern/hooks/fire",
+	}
+)
 
 func main() {
 	usage := `gin githooks.
@@ -25,8 +40,9 @@ func main() {
     gin-githooks -h | --help
     Options:
     -h --help                     Show this screen.
-	
-	gin hooks is supposed to be called via symbolic links from git hook dircetories (eg. ln -s githooks update).
+
+
+	gin hooks is called via symbolic links from git hook dircetories (eg. ln -s githooks update).
 	It will process the hook type and optional provided arguments. The collected information is then passed to the repo service
 	availible either locally or set by ENV(GIN_REPOURI)
 	It terminates with 0 in case everything went fine.
@@ -40,42 +56,42 @@ func main() {
 
 	wd, err := os.Getwd()
 	if err != nil {
-		log.Panicf("Could not detect the repository. Gin exitetd with:%v", err)
+		log.Panicf("Could not detect the repository. Gin exited with:%v", err)
 	}
-	log.Printf("Repo dir is%s", wd)
+	log.Printf("Repo directory is%s", wd)
 
-	hooknameToPath := map[string]string{
-		"pre-receive":  "/intern/hooks/pre-receive",
-		"update":       "/intern/hooks/update",
-		"post-receive": "/intern/hooks/post-receive",
-	}
-
-	repoServicebaseURL := os.Getenv("GIN_REPOURI")
-	if len(repoServicebaseURL) == 0 {
-		repoServicebaseURL = "http://localhost"
-		log.Printf("NO GIN_REPOURI Set; Falling back to: %s", repoServicebaseURL)
+	repoServiceBaseURL := os.Getenv("GIN_REPOURI")
+	if len(repoServiceBaseURL) == 0 {
+		repoServiceBaseURL = "http://localhost"
+		log.Printf("NO GIN_REPOURI Set; Falling back to: %s", repoServiceBaseURL)
 	}
 
 	hookCall := strings.SplitAfter(os.Args[0], "/")
 	log.Printf("Hook Name:%s", hookCall)
-	url := fmt.Sprint(repoServicebaseURL, hooknameToPath[hookCall[len(hookCall)-1]])
 
-	hookArguments := args["ARGS"].([]string)
-	hookJ, hErr := json.Marshal(gitHook{hookCall[len(hookCall)-1], hookArguments, wd})
-	if hErr != nil {
-		log.Println(hErr)
-	} else {
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(hookJ))
-		req.Header.Set("Content-Type", "application/json")
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			log.Fatalf("Could not contact the repo service at: %s. Error was: %v", url, err)
+	//Reading Stdin to extract Ref info
+	scanner := bufio.NewScanner(os.Stdin)
+	UpdatedRefs := []RefLine{}
+	for scanner.Scan() {
+		if splArgs := strings.Split(scanner.Text(), " "); len(splArgs) == 3 {
+			UpdatedRefs = append(UpdatedRefs, wire.RefLine{splArgs[0], splArgs[1], splArgs[2]})
+		} else {
+			log.Println("Sdtin not properly formatted for hook")
 		}
-		if resp.StatusCode == http.StatusOK {
-			log.Println("The Repo Service has approved this action")
-			os.Exit(0)
-		}
-		log.Fatalf("Could not contact the repo Service. Response was %s", resp.Status)
 	}
+	url := fmt.Sprint(repoServiceBaseURL, hooknameToPath[hookCall[len(hookCall)-1]])
+	hookArguments := args["ARGS"].([]string)
+	hook := wire.GitHook{hookCall[len(hookCall)-1], hookArguments, wd, UpdatedRefs}
+	repoClient := client.NewClient(repoServiceBaseURL)
+	token, err := makeServiceToken()
+	repoClient.AuthToken = token
+	resp, err := repoClient.Call("POST", url, hook)
+	if err != nil {
+		log.Fatalf("Could not contact the repo service at: %s. Error was: %v", url, err)
+	}
+	if resp.StatusCode == http.StatusOK {
+		log.Println("The Repo Service has approved this action")
+		os.Exit(0)
+	}
+	log.Fatalf("Could not contact the repo Service. Response was %s", resp.Status)
 }
