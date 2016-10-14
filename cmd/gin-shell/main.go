@@ -81,6 +81,12 @@ Options:
 	fmt.Fprintf(os.Stderr, "uid: %s\n", uid)
 	fmt.Fprintf(os.Stderr, "cmd: %s %v\n", cmd, argv[1:])
 
+	err = os.Setenv("GIN_UID", uid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[E] could not set env: %v", err)
+		os.Exit(1)
+	}
+
 	res := 0
 	switch cmd {
 	case "git-upload-pack":

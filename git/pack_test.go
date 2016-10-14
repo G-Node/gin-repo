@@ -42,7 +42,7 @@ func TestPackBasic(t *testing.T) {
 					t.Fatalf("could not read sha1 at pos %d: %v", k, err)
 				}
 
-				t.Logf("\t obj %s", oid)
+				//t.Logf("\t obj %s", oid)
 
 				//we use FindOffset, not ReadOffset, to test the
 				//search functionality
@@ -62,11 +62,28 @@ func TestPackBasic(t *testing.T) {
 					t.Fatalf("offset returned by FindOffset differs from ReadOffset")
 				}
 
-				_, err = data.OpenObject(off)
+				obj, err := data.OpenObject(off)
 
 				if err != nil {
 					t.Fatalf("could not open object (%s) at %d: %v", oid, k, err)
 				}
+
+				if IsDeltaObject(obj.Type()) {
+					//t.Logf("checking delta obj: %q", oid)
+					delta := obj.(*Delta)
+					chain, err := buildDeltaChain(delta, repo)
+
+					if err != nil {
+						t.Fatalf("building delta chain failed for %q: %v", oid, err)
+					}
+
+					_, err = chain.resolve()
+
+					if err != nil {
+						t.Fatalf("resolving delta chain failed for %q: %v", oid, err)
+					}
+				}
+
 			}
 		}
 

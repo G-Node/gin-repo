@@ -1,17 +1,13 @@
 package git
 
 import (
-	"crypto/md5"
-	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 )
 
 //Repository represents an on disk git repository.
@@ -100,25 +96,6 @@ func (repo *Repository) WriteDescription(description string) error {
 
 	// not atomic, fine for now
 	return ioutil.WriteFile(path, []byte(description), 0666)
-}
-
-//HasAnnex returns true if the repository has git-annex initialized.
-func (repo *Repository) HasAnnex() bool {
-	d := filepath.Join(repo.Path, "annex")
-	s, err := os.Stat(d)
-	return err == nil && s.IsDir()
-}
-
-//InitAnnex initializes git-annex support for a repository.
-func (repo *Repository) InitAnnex() error {
-	cmd := exec.Command("git", fmt.Sprintf("--git-dir=%s", repo.Path), "annex", "init", "gin")
-	body, err := cmd.Output()
-
-	if err != nil {
-		return fmt.Errorf("git: init annex failed: %q", string(body))
-	}
-
-	return nil
 }
 
 //OpenObject returns the git object for a give id (SHA1).
@@ -278,126 +255,78 @@ func (repo *Repository) Readlink(id SHA1) (string, error) {
 	return string(data), nil
 }
 
-//AnnexKey represents an annex key. Key, Backend and Keyname
-// fields are guaranteed to be there. Presence of other fields
-// depends on the used backend.
-type AnnexKey struct {
-	Key      string
-	Backend  string
-	Bytesize int64
-	Keyname  string
-	MTime    *time.Time
+//ObjectForPath will resolve the path to an object
+//for the file tree starting in the node root.
+//The root object can be either a Commit, Tree or Tag.
+func (repo *Repository) ObjectForPath(root Object, pathstr string) (Object, error) {
+	cleaned := path.Clean(strings.Trim(pathstr, " /"))
+	comps := strings.Split(cleaned, "/")
 
-	hash [16]byte
-}
+	var node Object
+	var err error
 
-//HashDirLower is the new key hash format. It uses two directories,
-// each dir name consisting of three lowercase letters.
-// (c.f. http://git-annex.branchable.com/internals/hashing/)
-func (key *AnnexKey) HashDirLower() string {
-	hs := hex.EncodeToString(key.hash[:])
-	return string(hs[:3]) + string(os.PathSeparator) +
-		string(hs[3:6]) + string(os.PathSeparator)
-}
-
-const (
-	annexKeyChars = "0123456789zqjxkmvwgpfZQJXKMVWGPF"
-)
-
-//HashDirMixed is the old key hash format. It uses two directories,
-// each dir name consisting of two letters.
-// (c.f. http://git-annex.branchable.com/internals/hashing/)
-func (key *AnnexKey) HashDirMixed() string {
-	var l [4]string
-	w := binary.LittleEndian.Uint32(key.hash[:4])
-	for i := uint(0); i < 4; i++ {
-		l[i] = string(annexKeyChars[int(w>>(6*i)&0x1F)])
-	}
-	return l[1] + l[0] + string(os.PathSeparator) +
-		l[3] + l[2] + string(os.PathSeparator)
-}
-
-//AnnexExamineKey parses the key and extracts all available information
-//from the key string. See AnnexKey for more details.
-//(cf. http://git-annex.branchable.com/internals/key_format/)
-func AnnexExamineKey(keystr string) (*AnnexKey, error) {
-
-	key := AnnexKey{Key: keystr, hash: md5.Sum([]byte(keystr))}
-
-	front, name := split2(keystr, "--")
-	key.Keyname = name
-
-	parts := strings.Split(front, "-")
-
-	if len(parts) < 1 {
-		// key error
-		return nil, fmt.Errorf("git: bad annex key (need backend--name)")
+	switch o := root.(type) {
+	case *Tree:
+		node = root
+	case *Commit:
+		node, err = repo.OpenObject(o.Tree)
+	case *Tag:
+		node, err = repo.OpenObject(o.Object)
+	default:
+		return nil, fmt.Errorf("unsupported root object type")
 	}
 
-	key.Backend = parts[0]
-	for i := 1; i < len(parts); i++ {
-		part := parts[i]
+	if err != nil {
+		return nil, fmt.Errorf("could not root tree object: %v", err)
+	}
 
-		if len(part) < 1 {
-			continue
+	var i int
+	for i = 0; i < len(comps); i++ {
+
+		tree, ok := node.(*Tree)
+		if !ok {
+			cwd := strings.Join(comps[:i+1], "/")
+			err := &os.PathError{
+				Op:   "convert git.Object to git.Tree",
+				Path: cwd,
+				Err:  fmt.Errorf("expected tree object, got %s", node.Type()),
+			}
+			return nil, err
 		}
 
-		k, v := part[0], part[1:]
+		var id *SHA1
+		for tree.Next() {
+			entry := tree.Entry()
+			if entry.Name == comps[i] {
+				id = &entry.ID
+				break
+			}
+		}
 
-		switch k {
-		case 's':
-			i, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				continue
+		if err = tree.Err(); err != nil {
+			cwd := strings.Join(comps[:i+1], "/")
+			return nil, &os.PathError{
+				Op:   "find object",
+				Path: cwd,
+				Err:  err}
+		} else if id == nil {
+			cwd := strings.Join(comps[:i+1], "/")
+			return nil, &os.PathError{
+				Op:   "find object",
+				Path: cwd,
+				Err:  os.ErrNotExist}
+		}
+
+		node, err = repo.OpenObject(*id)
+		if err != nil {
+			cwd := strings.Join(comps[:i+1], "/")
+			return nil, &os.PathError{
+				Op:   "open object",
+				Path: cwd,
+				Err:  err,
 			}
-			key.Bytesize = i
-		case 'm':
-			i, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				continue
-			}
-			t := time.Unix(i, 0)
-			key.MTime = &t
 		}
 	}
 
-	return &key, nil
-}
-
-//IsAnnexFile returns true if the file at path is
-//managed by git annex, false otherwise. Does not check
-//if the file is actually present
-func IsAnnexFile(path string) bool {
-	return strings.HasPrefix(path, ".git/annex")
-}
-
-type AnnexStat struct {
-	Name string
-	Size int64
-	Have bool
-}
-
-func (repo *Repository) Astat(target string) (*AnnexStat, error) {
-
-	sbuf := AnnexStat{Name: filepath.Base(target)}
-	ki, err := AnnexExamineKey(sbuf.Name)
-
-	if err != nil {
-		return nil, err
-	}
-
-	// we are in a bare repository, therefore we use hasdirlower
-	p := filepath.Join(repo.Path, "annex", "objects", ki.HashDirLower(), ki.Key, ki.Key)
-	fi, err := os.Stat(p)
-
-	if err != nil {
-		sbuf.Have = true
-		sbuf.Size = fi.Size()
-	} else if os.IsNotExist(err) {
-		sbuf.Have = false
-	} else if err != nil {
-		return nil, err
-	}
-
-	return &sbuf, nil
+	return node, nil
 }

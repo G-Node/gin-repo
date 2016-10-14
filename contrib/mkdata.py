@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # coding=utf-8
 
 """ Generate a sample data structure to be used by
@@ -12,6 +12,7 @@ import os
 import subprocess
 import shlex
 import yaml
+import sys
 
 tempdir = "tmp"
 known_repos = {}
@@ -19,7 +20,7 @@ known_repos = {}
 
 def create_user(user):
     """Create a single user."""
-    base = os.path.join("users", user)
+    base = os.path.abspath(os.path.join("users", user))
     if not os.path.exists(base):
         os.mkdir(base)
     key = os.path.join(base, user + ".ssh.key")
@@ -35,11 +36,16 @@ def make_repo(repo):
         os.makedirs(tempdir)
 
     target = os.path.join(tempdir, name + ".git")
+    known_repos[name] = os.path.abspath(target)
+    if os.path.exists(target):
+        return
+
     if "generate" in repo:
         pwd = os.getcwd()
         cmd = repo["generate"]
         args = shlex.split(cmd)
-        args[0] = os.path.join(pwd, args[0])
+        exepath = os.path.abspath(os.path.dirname(sys.argv[0]))
+        args[0] = os.path.join(exepath, args[0])
         os.chdir(tempdir)
         subprocess.check_call(args)
         os.chdir(pwd)
@@ -47,7 +53,6 @@ def make_repo(repo):
         loc = repo["clone"]
         subprocess.call(["git", "clone", "--bare", loc, target])
 
-    known_repos[name] = target
 
 
 def create_repo(user, repo):
@@ -65,6 +70,9 @@ def create_repo(user, repo):
         make_repo(repo)
 
     loc = known_repos[name]
+    if os.path.exists(path):
+        return
+
     subprocess.call(["git", "clone", "--bare", loc, path])
 
     # now set up sharing and visibility
@@ -72,7 +80,7 @@ def create_repo(user, repo):
     os.mkdir(gindir)
     if repo.get("public") is not None:
         target = os.path.join(gindir, "public")
-        os.open(target, flags=os.O_CREAT)
+        open(target, "w")
     shared = repo.get("shared") or {}
     for buddy, level in shared.items():
         sharing = os.path.join(gindir, "sharing")
@@ -105,3 +113,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    sys.exit(0)

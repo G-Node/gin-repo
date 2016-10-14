@@ -111,3 +111,55 @@ func TestRepoAnnexBasic(t *testing.T) {
 		t.Logf("[W] Could not remove test git dir: %q", repo.Path)
 	}
 }
+
+var ofptests = []struct {
+	root  string
+	path  string
+	otype ObjectType
+	err   bool
+}{
+	// 9c3409e9225137bcccf070e1bb583b808da37003 is a commit object
+	{"9c3409e9225137bcccf070e1bb583b808da37003", "/git/repo_test.go", ObjBlob, false}, // this is us!
+	{"9c3409e9225137bcccf070e1bb583b808da37003", "/git", ObjTree, false},              // our parent dir
+	{"9c3409e9225137bcccf070e1bb583b808da37003", "/cmd/gin-shell/main.go", ObjBlob, false},
+	{"9c3409e9225137bcccf070e1bb583b808da37003", "NONEXISTANT/PATH/FOOBAR", ObjTree, true},
+	// 5ed35b298dad11daaaf5a497b5682ee53af41a9b is a tree object
+	{"5ed35b298dad11daaaf5a497b5682ee53af41a9b", "/git/repo_test.go", ObjBlob, false}, // this is us, again
+	{"5ed35b298dad11daaaf5a497b5682ee53af41a9b", "NONEXISTANT/PATH/FOOBAR", ObjTree, true},
+}
+
+func TestObjectForPath(t *testing.T) {
+	repo, err := DiscoverRepository()
+
+	if err != nil {
+		t.Skip("[W] Not in git directory. Skipping test")
+	}
+
+	for _, tt := range ofptests {
+		oid, _ := ParseSHA1(tt.root)
+		root, err := repo.OpenObject(oid)
+
+		if err != nil {
+			t.Fatalf("ObjectForPath(%q, ...): could not object root obj: %v", tt.root, err)
+		}
+
+		obj, err := repo.ObjectForPath(root, tt.path)
+
+		if tt.err && err == nil {
+			t.Fatalf("ObjectForPath(%.7q, %q) => no error but expected one", tt.root, tt.path)
+		} else if !tt.err && err != nil {
+			t.Fatalf("ObjectForPath(%.7q, %q) => error: %v, wanted %s obj", tt.root, tt.path, err, tt.otype)
+		} else if !tt.err && obj.Type() != tt.otype {
+			t.Fatalf("Expected %s object, got %s", tt.otype, obj.Type())
+		}
+
+		//looking good
+
+		if err == nil {
+			t.Logf("ObjectForPath(%.7q, %q) => %s [OK!]", tt.root, tt.path, obj.Type())
+		} else {
+			t.Logf("ObjectForPath(%.7q, %q) => expected error(%q) [OK!]", tt.root, tt.path, err)
+		}
+	}
+
+}
