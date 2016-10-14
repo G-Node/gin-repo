@@ -24,6 +24,14 @@ Authorization: Bearer :token
 GET http://localhost:8082/users/gicmo/repos
 Authorization: Bearer :token
 
+
+#
+# Browse repo
+#
+
+GET http://localhost:8082/users/gicmo/repos/exrepo/browse/master
+
+
 #
 # Get Branch
 #
