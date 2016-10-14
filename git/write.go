@@ -121,3 +121,23 @@ func (t *Tree) WriteTo(writer io.Writer) (int64, error) {
 	err = w.Flush()
 	return n, err
 }
+
+//WriteTo writes the blob object to the writer in the on-disk format
+//i.e. as it would be stored in the git objects dir (although uncompressed).
+func (b *Blob) WriteTo(writer io.Writer) (int64, error) {
+	w := bufio.NewWriter(writer)
+
+	n, err := writeHeader(b, w)
+	if err != nil {
+		return n, err
+	}
+
+	x, err := io.Copy(w, b.source)
+	n += int64(x)
+	if err != nil {
+		return n, err
+	}
+
+	err = w.Flush()
+	return n, err
+}

@@ -110,3 +110,27 @@ func TestWriteTree(t *testing.T) {
 		t.Fatalf("sha1(tree) => %q expected %q", x, y)
 	}
 }
+
+func TestWriteBlob(t *testing.T) {
+	var b bytes.Buffer
+	blob := Blob{
+		gitObject: gitObject{otype: ObjBlob,
+			size:   0,
+			source: ioutil.NopCloser(&b)},
+	}
+
+	h := sha1.New()
+
+	_, err := blob.WriteTo(h)
+
+	if err != nil {
+		t.Fatalf("Blob.WriteTo() => %v ", err)
+	}
+
+	x := fmt.Sprintf("%x", h.Sum(nil))
+	y := "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+
+	if x != y {
+		t.Fatalf("sha1(blob) => %q expected %q", x, y)
+	}
+}
