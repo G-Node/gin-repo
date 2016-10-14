@@ -551,7 +551,7 @@ func (s *Server) browseRepo(w http.ResponseWriter, r *http.Request) {
 	ipath := ivars["path"]
 
 	//for now we only support master :(
-	if err != nil || ibranch != "master" || ipath == "" {
+	if err != nil || ibranch != "master" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
