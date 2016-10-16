@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -132,5 +133,39 @@ func TestWriteBlob(t *testing.T) {
 
 	if x != y {
 		t.Fatalf("sha1(blob) => %q expected %q", x, y)
+	}
+}
+
+func TestWriteTag(t *testing.T) {
+	tobj, _ := ParseSHA1("cd119b179d4be4629d8a2e605a8386a7b6fc2afa")
+	tag := Tag{
+		gitObject: gitObject{
+			otype:  ObjTag,
+			size:   151,
+			source: nil,
+		},
+		Object:  tobj,
+		ObjType: ObjCommit,
+		Tag:     "paper/jossa",
+		Tagger:  "gin repo <gin-repo@g-node.org> 1476609894 +0200",
+		Message: "Tag as paper/jossa",
+	}
+
+	h := sha1.New()
+
+	var b bytes.Buffer
+	mw := io.MultiWriter(h, &b)
+
+	_, err := tag.WriteTo(mw)
+	if err != nil {
+		t.Fatalf("Tag.WriteTo() => %v ", err)
+	}
+
+	x := fmt.Sprintf("%x", h.Sum(nil))
+	y := "84c011b574ae42832efab99acb782f5d716f5097"
+
+	if x != y {
+		t.Logf("[E] tag object proof:\n%s\n", b.String())
+		t.Fatalf("sha1(tag) => %q expected %q", x, y)
 	}
 }

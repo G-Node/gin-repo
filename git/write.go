@@ -141,3 +141,47 @@ func (b *Blob) WriteTo(writer io.Writer) (int64, error) {
 	err = w.Flush()
 	return n, err
 }
+
+//WriteTo writes the tag object to the writer in the on-disk format
+//i.e. as it would be stored in the git objects dir (although uncompressed).
+func (t *Tag) WriteTo(writer io.Writer) (int64, error) {
+	w := bufio.NewWriter(writer)
+
+	n, err := writeHeader(t, w)
+	if err != nil {
+		return n, err
+	}
+
+	x, err := w.WriteString(fmt.Sprintf("object %s\n", t.Object))
+	n += int64(x)
+	if err != nil {
+		return n, err
+	}
+
+	x, err = w.WriteString(fmt.Sprintf("type %s\n", t.ObjType))
+	n += int64(x)
+	if err != nil {
+		return n, err
+	}
+
+	x, err = w.WriteString(fmt.Sprintf("tag %s\n", t.Tag))
+	n += int64(x)
+	if err != nil {
+		return n, err
+	}
+
+	x, err = w.WriteString(fmt.Sprintf("tagger %s\n\n", t.Tagger))
+	n += int64(x)
+	if err != nil {
+		return n, err
+	}
+
+	x, err = w.WriteString(fmt.Sprintf("%s\n", t.Message))
+	n += int64(x)
+	if err != nil {
+		return n, err
+	}
+
+	err = w.Flush()
+	return n, err
+}
