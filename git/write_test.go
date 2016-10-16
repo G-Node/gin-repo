@@ -138,6 +138,14 @@ func TestWriteBlob(t *testing.T) {
 
 func TestWriteTag(t *testing.T) {
 	tobj, _ := ParseSHA1("cd119b179d4be4629d8a2e605a8386a7b6fc2afa")
+
+	tagger := Signature{
+		Name:   "gin repo",
+		Email:  "gin-repo@g-node.org",
+		Date:   time.Unix(1476609894, 0),
+		Offset: time.FixedZone("+0200", 120),
+	}
+
 	tag := Tag{
 		gitObject: gitObject{
 			otype:  ObjTag,
@@ -147,7 +155,7 @@ func TestWriteTag(t *testing.T) {
 		Object:  tobj,
 		ObjType: ObjCommit,
 		Tag:     "paper/jossa",
-		Tagger:  "gin repo <gin-repo@g-node.org> 1476609894 +0200",
+		Tagger:  tagger,
 		Message: "Tag as paper/jossa",
 	}
 

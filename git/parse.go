@@ -233,7 +233,7 @@ func parseTag(obj gitObject) (*Tag, error) {
 		case "tag":
 			c.Tag = strings.Trim(tail, "\n")
 		case "tagger":
-			c.Tagger = strings.Trim(tail, "\n")
+			c.Tagger, err = parseSignature(strings.Trim(tail, "\n"))
 		}
 
 		if err != nil || head == "\n" {
