@@ -122,6 +122,7 @@ type Object interface {
 	Type() ObjectType
 	Size() int64
 
+	io.WriterTo
 	io.Closer
 }
 
