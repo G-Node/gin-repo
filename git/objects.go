@@ -220,6 +220,7 @@ type Tag struct {
 
 	Object  SHA1
 	ObjType ObjectType
+	Tag     string
 	Tagger  string
 	Message string
 }
