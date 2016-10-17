@@ -267,6 +267,13 @@ func (d *Delta) SkipOp() {
 	}
 }
 
+//WriteTo would write the object to disk in the git object
+//representation. It is not NOT IMPLEMENTED for the delta
+//object.
+func (d *Delta) WriteTo(w io.Writer) (int64, error) {
+	return 0, fmt.Errorf("WriteTo not implemented for Delta")
+}
+
 type deltaChain struct {
 	baseObj gitObject
 	baseOff int64
