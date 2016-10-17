@@ -504,9 +504,9 @@ func (s *Server) objectToWire(w http.ResponseWriter, repo *git.Repository, obj g
 			if !symlink {
 				out.WriteString(fmt.Sprintf("%q: %q,\n", "type", entry.Type))
 			}
-			out.WriteString(fmt.Sprintf("%q: %q\n", "id", entry.ID))
+			out.WriteString(fmt.Sprintf("%q: %q,\n", "id", entry.ID))
 			out.WriteString(fmt.Sprintf("%q: %q,\n", "name", entry.Name))
-			out.WriteString(fmt.Sprintf("%q: \"%08o\",\n", "mode", entry.Mode))
+			out.WriteString(fmt.Sprintf("%q: \"%08o\"\n", "mode", entry.Mode))
 			out.WriteString("}")
 		}
 		out.WriteString("]}")
