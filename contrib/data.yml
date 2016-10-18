@@ -26,6 +26,9 @@ users:
         <<: *auth
         public: true
         shared: {}
+      exrepo:
+        <<: *exrepo
+        public: false
   bob:
     repos:
       repod:
