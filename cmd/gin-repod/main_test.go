@@ -46,34 +46,49 @@ func TestMain(m *testing.M) {
 	os.Exit(res)
 }
 
-func TestBranchAccess(t *testing.T) {
-	req, err := http.NewRequest("GET", "/users/alice/repos/exrepo/branches/master", nil)
+func NewGet(t *testing.T, url string, user string) *http.Request {
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	token := ""
+
+	if user != "" {
+		token, err = server.users.TokenForUser(user)
+		if err != nil {
+			t.Fatalf("could not make token for alice: %v", token)
+		}
+	}
+
+	if token != "" {
+		req.Header.Add("Authorization", "Bearer "+token)
+	}
+
+	return req
+}
+
+func makeRequest(t *testing.T, req *http.Request, code int) (*httptest.ResponseRecorder, error) {
 	rr := httptest.NewRecorder()
 	server.ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusNotFound {
-		t.Fatalf("wrong status code: got %v want %v", status, http.StatusNotFound)
+	if status := rr.Code; status != code {
+		return rr, fmt.Errorf("wrong status code: got %v want %v", status, code)
 	}
 
-	token, err := server.users.TokenForUser("alice")
-	if err != nil {
-		t.Fatalf("could not make token for alice: %v", token)
-	}
+	return rr, nil
+}
 
-	req, err = http.NewRequest("GET", "/users/alice/repos/exrepo/branches/master", nil)
-	req.Header.Add("Authorization", "Bearer "+token)
+func TestBranchAccess(t *testing.T) {
+	req := NewGet(t, "/users/alice/repos/exrepo/branches/master", "")
+	_, err := makeRequest(t, req, http.StatusNotFound)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	rr = httptest.NewRecorder()
-	server.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		t.Fatalf("wrong status code: got %v want %v", status, http.StatusOK)
+	req = NewGet(t, "/users/alice/repos/exrepo/branches/master", "alice")
+	_, err = makeRequest(t, req, http.StatusOK)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
