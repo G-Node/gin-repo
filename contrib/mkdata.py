@@ -78,7 +78,7 @@ def create_repo(user, repo):
     # now set up sharing and visibility
     gindir = os.path.join(path, "gin")
     os.mkdir(gindir)
-    if repo.get("public") is not None:
+    if repo.get("public", False):
         target = os.path.join(gindir, "public")
         open(target, "w")
     shared = repo.get("shared") or {}
