@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/G-Node/gin-repo/internal/testbed"
+	"github.com/G-Node/gin-repo/store"
 )
 
 var server *Server
@@ -94,10 +95,26 @@ func TestBranchAccess(t *testing.T) {
 }
 
 func TestObjectAccess(t *testing.T) {
-	// b1318dfe1d7926146f6d8ccf4b52bd7ab3b66431 is the first commit of exrepo
-	url := "/users/alice/repos/exrepo/objects/b1318dfe1d7926146f6d8ccf4b52bd7ab3b66431"
+	//first find the commit id
+	repo, err := server.repos.OpenGitRepo(store.RepoId{Name: "exrepo", Owner: "alice"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ref, err := repo.OpenRef("master")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	id, err := ref.Resolve()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//now make some requests
+	url := fmt.Sprintf("/users/alice/repos/exrepo/objects/%s", id)
 	req := NewGet(t, url, "")
-	_, err := makeRequest(t, req, http.StatusNotFound)
+	_, err = makeRequest(t, req, http.StatusNotFound)
 	if err != nil {
 		t.Fatal(err)
 	}
