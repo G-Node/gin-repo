@@ -92,3 +92,19 @@ func TestBranchAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestObjectAccess(t *testing.T) {
+	// b1318dfe1d7926146f6d8ccf4b52bd7ab3b66431 is the first commit of exrepo
+	url := "/users/alice/repos/exrepo/objects/b1318dfe1d7926146f6d8ccf4b52bd7ab3b66431"
+	req := NewGet(t, url, "")
+	_, err := makeRequest(t, req, http.StatusNotFound)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req = NewGet(t, url, "alice")
+	_, err = makeRequest(t, req, http.StatusOK)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
