@@ -12,8 +12,8 @@ go:
 before_install:
   - sudo apt-get update
   - sudo apt-get install git-annex
-  - sudo apt-get install python3-pip
-  - pip3 install pyyaml
+  - sudo apt-get install python-pip
+  - pip install pyyaml
   - pushd contrib && ./hostkey.sh && popd
   - docker build -t gin-repod .
 
