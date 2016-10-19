@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"os"
 	"strings"
-
 	"bufio"
+
 	"github.com/G-Node/gin-repo/auth"
 	"github.com/G-Node/gin-repo/client"
-	"github.com/G-Node/gin-repo/wire"
 	"github.com/docopt/docopt-go"
+	"github.com/G-Node/gin-repo/wire"
 )
 
 func makeServiceToken() (string, error) {
@@ -25,7 +25,7 @@ func makeServiceToken() (string, error) {
 	return auth.MakeServiceToken(secret)
 }
 
-const (
+var (
 	hooknameToPath = map[string]string{
 		"pre-receive":  "/intern/hooks/fire",
 		"update":       "/intern/hooks/fire",
@@ -44,7 +44,7 @@ func main() {
 
 	gin hooks is called via symbolic links from git hook dircetories (eg. ln -s githooks update).
 	It will process the hook type and optional provided arguments. The collected information is then passed to the repo service
-	availible either locally or set by ENV(GIN_REPOURI)
+	availible either locally or set by ENV(GIN_REPO_URL)
 	It terminates with 0 in case everything went fine.
 `
 	args, err := docopt.Parse(usage, nil, true, "gin githooks 0.1", false)
@@ -60,10 +60,10 @@ func main() {
 	}
 	log.Printf("Repo directory is%s", wd)
 
-	repoServiceBaseURL := os.Getenv("GIN_REPOURI")
+	repoServiceBaseURL := os.Getenv("GIN_REPO_URL")
 	if len(repoServiceBaseURL) == 0 {
-		repoServiceBaseURL = "http://localhost"
-		log.Printf("NO GIN_REPOURI Set; Falling back to: %s", repoServiceBaseURL)
+		repoServiceBaseURL = "http://localhost:8082"
+		log.Printf("NO GIN_REPO_URL Set; Falling back to: %s", repoServiceBaseURL)
 	}
 
 	hookCall := strings.SplitAfter(os.Args[0], "/")
@@ -71,7 +71,7 @@ func main() {
 
 	//Reading Stdin to extract Ref info
 	scanner := bufio.NewScanner(os.Stdin)
-	UpdatedRefs := []RefLine{}
+	UpdatedRefs := []wire.RefLine{}
 	for scanner.Scan() {
 		if splArgs := strings.Split(scanner.Text(), " "); len(splArgs) == 3 {
 			UpdatedRefs = append(UpdatedRefs, wire.RefLine{splArgs[0], splArgs[1], splArgs[2]})

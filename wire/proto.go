@@ -32,7 +32,6 @@ type GitHook struct {
 	Name     string    `json:"name,omitempty"`
 	HookArgs []string  `json:"hookargs,omitempty"`
 	RepoPath string    `json:"repopath,omitempty"`
-	HookBody string    `json:"hookbody,omitempty"`
 	RefLines []RefLine `json:"ref_lines,omitempty"`
 }
 
