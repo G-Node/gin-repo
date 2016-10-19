@@ -1,6 +1,11 @@
 package git
 
-import "testing"
+import (
+	"bytes"
+	"crypto/sha1"
+	"io"
+	"testing"
+)
 
 func TestPackBasic(t *testing.T) {
 
@@ -32,6 +37,7 @@ func TestPackBasic(t *testing.T) {
 			t.Fatalf("could not open pack file: %v", err)
 		}
 
+		count := 0
 		for i := byte(0); i < 255; i++ {
 			s, e := idx.FO.Bounds(i)
 			for k := s; k < e; k++ {
@@ -77,15 +83,36 @@ func TestPackBasic(t *testing.T) {
 						t.Fatalf("building delta chain failed for %q: %v", oid, err)
 					}
 
-					_, err = chain.resolve()
+					obj, err = chain.resolve()
 
 					if err != nil {
 						t.Fatalf("resolving delta chain failed for %q: %v", oid, err)
 					}
 				}
 
+				var b bytes.Buffer
+				h := sha1.New()
+				mw := io.MultiWriter(h, &b)
+
+				_, err = obj.WriteTo(mw)
+				if err != nil {
+					t.Fatalf("Object.WriteTo(%q) => failed!: %v ", oid, err)
+				}
+
+				hid := h.Sum(nil)
+				var cid SHA1
+				copy(cid[:], hid)
+
+				if cid != oid {
+					t.Logf("[E] object proof:\n%s---EOF---\n", b.String())
+					t.Fatalf("sha1(%s) => %q expected %q", obj.Type(), cid, oid)
+				}
+
+				count++
 			}
 		}
+
+		t.Logf("tested %d objects in pack", count)
 
 		onf, err := ParseSHA1("0000000000000000000000000000000000000000")
 		if err != nil {

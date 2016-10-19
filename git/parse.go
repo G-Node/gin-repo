@@ -230,8 +230,10 @@ func parseTag(obj gitObject) (*Tag, error) {
 			c.Object, err = ParseSHA1(tail)
 		case "type":
 			c.ObjType, err = ParseObjectType(tail)
+		case "tag":
+			c.Tag = strings.Trim(tail, "\n")
 		case "tagger":
-			c.Tagger = strings.Trim(tail, "\n")
+			c.Tagger, err = parseSignature(strings.Trim(tail, "\n"))
 		}
 
 		if err != nil || head == "\n" {

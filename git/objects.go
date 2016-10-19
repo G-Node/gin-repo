@@ -122,6 +122,7 @@ type Object interface {
 	Type() ObjectType
 	Size() int64
 
+	io.WriterTo
 	io.Closer
 }
 
@@ -220,6 +221,7 @@ type Tag struct {
 
 	Object  SHA1
 	ObjType ObjectType
-	Tagger  string
+	Tag     string
+	Tagger  Signature
 	Message string
 }

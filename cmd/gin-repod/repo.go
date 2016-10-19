@@ -384,6 +384,11 @@ func (s *Server) getBranch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+	if !ok {
+		return
+	}
+
 	repo, err := s.repos.OpenGitRepo(rid)
 
 	if err != nil {
@@ -423,6 +428,11 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+	if !ok {
+		return
+	}
+
 	repo, err := s.repos.OpenGitRepo(rid)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
@@ -441,6 +451,10 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.objectToWire(w, repo, obj)
+}
+
+func (s *Server) objectToWire(w http.ResponseWriter, repo *git.Repository, obj git.Object) {
 	out := bufio.NewWriter(w)
 	switch obj := obj.(type) {
 	case *git.Commit:
@@ -500,9 +514,9 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 			if !symlink {
 				out.WriteString(fmt.Sprintf("%q: %q,\n", "type", entry.Type))
 			}
-			out.WriteString(fmt.Sprintf("%q: %q\n", "id", entry.ID))
+			out.WriteString(fmt.Sprintf("%q: %q,\n", "id", entry.ID))
 			out.WriteString(fmt.Sprintf("%q: %q,\n", "name", entry.Name))
-			out.WriteString(fmt.Sprintf("%q: \"%08o\",\n", "mode", entry.Mode))
+			out.WriteString(fmt.Sprintf("%q: \"%08o\"\n", "mode", entry.Mode))
 			out.WriteString("}")
 		}
 		out.WriteString("]}")
@@ -513,7 +527,7 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 			n = m
 		}
 		buf := make([]byte, n)
-		_, err = obj.Read(buf[:])
+		_, err := obj.Read(buf[:])
 		if err != nil {
 			panic("IO error")
 		}
@@ -521,7 +535,7 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", mtype)
 
 		w.Write(buf)
-		_, err := io.Copy(w, obj)
+		_, err = io.Copy(w, obj)
 		if err != nil {
 			s.log(WARN, "io error, but data already written")
 		}
@@ -537,4 +551,61 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 	out.Flush() // ignoring error
 	obj.Close() // ignoring error
 
+}
+
+func (s *Server) browseRepo(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+
+	ibranch := ivars["branch"]
+	ipath := ivars["path"]
+
+	//for now we only support master :(
+	if err != nil || ibranch != "master" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+	if !ok {
+		return
+	}
+
+	s.log(DEBUG, "branch: %q, ipath: %q", ibranch, ipath)
+
+	repo, err := s.repos.OpenGitRepo(rid)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	ref, err := repo.OpenRef(ibranch)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	id, err := ref.Resolve()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	root, err := repo.OpenObject(id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	obj, err := repo.ObjectForPath(root, ipath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+
+	s.objectToWire(w, repo, obj)
 }

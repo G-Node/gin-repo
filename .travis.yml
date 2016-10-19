@@ -12,15 +12,14 @@ go:
 before_install:
   - sudo apt-get update
   - sudo apt-get install git-annex
-  - sudo apt-get install python3-pip
-  - pip3 install pyyaml
+  - sudo apt-get install python-pip
+  - pip install pyyaml
   - pushd contrib && ./hostkey.sh && popd
   - docker build -t gin-repod .
 
 install:
   - go get "github.com/docopt/docopt-go"
   - go get "github.com/gorilla/mux"
-  - go get "github.com/gorilla/context"
   - go get "github.com/gorilla/handlers"
   - go get "github.com/dgrijalva/jwt-go"
   - go get "golang.org/x/crypto/ssh"
