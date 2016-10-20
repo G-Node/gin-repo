@@ -18,6 +18,10 @@ var repoids = []struct {
 	{"/foo/bar/", defaultRepo},
 	{"/~/foo/bar", defaultRepo},
 	{"/~/foo/bar/", defaultRepo},
+	{"foo/bar.git", defaultRepo},
+	{"/foo/bar.git", defaultRepo},
+	{"/~/foo/bar.git", defaultRepo},
+	{"/~/foo/bar.git/", defaultRepo},
 
 	//invalid paths
 	{"foo", nil},
@@ -29,6 +33,9 @@ var repoids = []struct {
 	{"foo/bar/se/", nil},
 	{"foo/bar/se/foo/bar/se", nil},
 	{"//foo//bar//se", nil},
+	{"//foo//bar.", nil},
+	{"foo//bar.gi", nil},
+	{"foo//bar.git.", nil},
 
 	//invalid names
 	{"/~foo/bar/", nil},
