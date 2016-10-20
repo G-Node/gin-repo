@@ -29,14 +29,14 @@ type Branch struct {
 }
 
 type GitHook struct {
-	Name     string    `json:"name,omitempty"`
+	Name     string    `json:"name"`
 	HookArgs []string  `json:"hookargs,omitempty"`
-	RepoPath string    `json:"repopath,omitempty"`
+	RepoPath string    `json:"repopath"`
 	RefLines []RefLine `json:"ref_lines,omitempty"`
 }
 
 type RefLine struct {
-	OldRef  string `json:"oldref,omitempty"`
-	NewRef  string `json:"newref,omitempty"`
-	RefName string `json:"refname,omitempty"`
+	OldRef  string `json:"oldref"`
+	NewRef  string `json:"newref"`
+	RefName string `json:"refname"`
 }
