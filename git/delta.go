@@ -127,17 +127,15 @@ func decodeInt(r io.Reader, b byte, l uint) (size int64, err error) {
 }
 
 func readVarint(r io.Reader) (int64, error) {
-	b := make([]byte, 1)
-
-	_, err := r.Read(b)
+	b, err := readByte(r)
 	if err != nil {
 		return 0, fmt.Errorf("git: io error: %v", err)
 	}
 
-	size := int64(b[0] & 0x7F)
+	size := int64(b & 0x7F)
 
-	for b[0]&0x80 != 0 {
-		_, err := r.Read(b)
+	for b&0x80 != 0 {
+		b, err = readByte(r)
 		if err != nil {
 			return 0, fmt.Errorf("git: io error: %v", err)
 		}
@@ -152,7 +150,7 @@ func readVarint(r io.Reader) (int64, error) {
 			return 0, fmt.Errorf("int64 overflow")
 		}
 
-		size = (size << 7) + int64(b[0]&0x7F)
+		size = (size << 7) + int64(b&0x7F)
 	}
 
 	return size, nil
