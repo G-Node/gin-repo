@@ -68,19 +68,10 @@ func gitAnnex(client *client.Client, args []string, uid string) int {
 		return -10
 	}
 
-	repo, err := git.OpenRepository(path)
+	_, err = git.OpenRepository(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: Could not open repository.")
 		return -15
-	}
-
-	if pok && !repo.HasAnnex() {
-		err = repo.InitAnnex()
-		if err != nil {
-			//TODO: don't print the internal error, might give away the actual path
-			fmt.Fprintf(os.Stderr, "ERROR: initialization of git-annex failed: %v", err)
-			return -14
-		}
 	}
 
 	args[2] = path
