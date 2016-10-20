@@ -70,7 +70,7 @@ func (c *Commit) WriteTo(writer io.Writer) (int64, error) {
 		return n, err
 	}
 
-	x, err = w.WriteString(fmt.Sprintf("%s", c.Message))
+	x, err = w.WriteString(c.Message)
 	n += int64(x)
 	if err != nil {
 		return n, err
