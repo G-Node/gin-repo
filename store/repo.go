@@ -15,7 +15,7 @@ import (
 var idChecker *regexp.Regexp
 
 func init() {
-	idChecker = regexp.MustCompile("^(?:/~/|/)?([0-9a-zA-Z][0-9a-zA-Z._-]{2,})/([0-9a-zA-Z][0-9a-zA-Z._@+-]*?)(?:.git)?(?:/)?$")
+	idChecker = regexp.MustCompile("^(?:/~/|/)?([[:alnum:]][0-9a-zA-Z._-]{2,})/([[:alnum:]][0-9a-zA-Z._@+-]*?)(?:.git)?(?:/)?$")
 }
 
 type RepoId struct {
