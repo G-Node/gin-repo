@@ -24,3 +24,20 @@ install:
   - go get "github.com/dgrijalva/jwt-go"
   - go get "golang.org/x/crypto/ssh"
   - go get "github.com/fsouza/go-dockerclient"
+
+after_success:
+  - if [ $TRAVIS_GO_VERSION == "tip" ]; then exit 0; fi
+  - if [ -z ${DOCKER_PASS+x} ]; then echo "No DOCKER_PASS set."; exit 0; fi
+  - docker login -u="$DOCKER_USER" -p="$DOCKER_PASS" || exit 1
+  - if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+      if ["TRAVIS_BRANCH" == "master" ]; then
+        export TAG="latest";
+      else
+        export TAG="$TRAVIS_BRANCH";
+      fi
+
+      docker tag gin-repod:latest gnode/gin-repo:$TAG || exit 1;
+    fi
+  - docker tag gin-repod:latest gnode/gin-repo:travis-$TRAVIS_BUILD_NUMBER
+  - docker push gnode/gin-repo
+
