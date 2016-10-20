@@ -176,7 +176,7 @@ func (t *Tag) WriteTo(writer io.Writer) (int64, error) {
 		return n, err
 	}
 
-	x, err = w.WriteString(fmt.Sprintf("%s\n", t.Message))
+	x, err = w.WriteString(t.Message)
 	n += int64(x)
 	if err != nil {
 		return n, err

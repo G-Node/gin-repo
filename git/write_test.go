@@ -156,7 +156,7 @@ func TestWriteTag(t *testing.T) {
 		ObjType: ObjCommit,
 		Tag:     "paper/jossa",
 		Tagger:  tagger,
-		Message: "Tag as paper/jossa",
+		Message: "Tag as paper/jossa\n",
 	}
 
 	h := sha1.New()
