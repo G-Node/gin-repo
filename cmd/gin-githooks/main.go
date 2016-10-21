@@ -1,17 +1,17 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-	"bufio"
 
 	"github.com/G-Node/gin-repo/auth"
 	"github.com/G-Node/gin-repo/client"
-	"github.com/docopt/docopt-go"
 	"github.com/G-Node/gin-repo/wire"
+	"github.com/docopt/docopt-go"
 	"io"
 )
 
@@ -34,8 +34,7 @@ var (
 	}
 )
 
-
-func getHook(args map[string]interface{}, inStream io.Reader) wire.GitHook{
+func getHook(args map[string]interface{}, inStream io.Reader) wire.GitHook {
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Panicf("Could not detect repository. Gin exited with:%v", err)
@@ -58,7 +57,7 @@ func getHook(args map[string]interface{}, inStream io.Reader) wire.GitHook{
 	return wire.GitHook{hookCall[len(hookCall)-1], hookArguments, wd, UpdatedRefs}
 }
 
-func sendHook(repoClient *client.Client, url string, hook wire.GitHook) bool{
+func sendHook(repoClient *client.Client, url string, hook wire.GitHook) bool {
 
 	token, err := makeServiceToken()
 	repoClient.AuthToken = token
@@ -91,8 +90,9 @@ func main() {
 `
 	args, err := docopt.Parse(usage, nil, true, "gin githooks 0.1", false)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error while parsing cmd line: %v\n", err)
-		os.Exit(-1)
+		log.Fatalf("Error while parsing cmd line: %v\n", err)
+		// log.Fatal is equivalent to Print() followed by a call to os.Exit(1).
+		// needs to replaced once logging is done differently
 	}
 	log.SetOutput(os.Stderr)
 
@@ -103,14 +103,15 @@ func main() {
 	}
 
 	hook := getHook(args, os.Stdin)
-	log.Println(hook)
 
 	url := fmt.Sprint(repoServiceBaseURL, hooknameToPath[hook.Name])
 	repoClient := client.NewClient(repoServiceBaseURL)
 
-	if (sendHook(repoClient, url, hook)) {
-		os.Exit(0)
-	}else{
+	if ok := sendHook(repoClient, url, hook); !ok {
 		log.Fatal("Hook was not accepted")
+		// log.Fatal is equivalent to Print() followed by a call to os.Exit(1).
+		// needs to replaced once logging is done differently
+	} else {
+		os.Exit(0)
 	}
 }
