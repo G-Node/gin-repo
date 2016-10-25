@@ -316,11 +316,7 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 
 	public, err := s.repos.GetRepoVisibility(rid)
 	if err != nil {
-		if os.IsNotExist(err) {
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-		}
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
