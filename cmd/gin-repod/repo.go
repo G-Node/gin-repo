@@ -90,7 +90,6 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) repoToWire(id store.RepoId, repo *git.Repository) (wire.Repo, error) {
-
 	public, err := s.repos.GetRepoVisibility(id)
 	if err != nil {
 		s.log(WARN, "could not get repo visibility: %v", err)
@@ -102,7 +101,7 @@ func (s *Server) repoToWire(id store.RepoId, repo *git.Repository) (wire.Repo, e
 		Owner:       id.Owner,
 		Description: repo.ReadDescription(),
 		Head:        "master",
-		Visibility:  public,
+		Public:      public,
 	}
 
 	return wr, nil

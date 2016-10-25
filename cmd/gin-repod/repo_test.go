@@ -33,8 +33,8 @@ func TestRepoToWire(t *testing.T) {
 	if wired.Description == "" {
 		t.Error("Expected repository description but got empty field")
 	}
-	if wired.Visibility {
-		t.Errorf("Expected repository privacy setting to be false but was: %t\n", wired.Visibility)
+	if wired.Public {
+		t.Errorf("Expected repository public setting to be false but was: %t\n", wired.Public)
 	}
 	if wired.Head != defaultRepoHead {
 		t.Errorf("Expected repository head to be %q but got %q\n", defaultRepoHead, wired.Head)
