@@ -3,19 +3,18 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-
-	"github.com/gorilla/mux"
-
 	"regexp"
 
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
+	"github.com/gorilla/mux"
 )
 
 var nameChecker *regexp.Regexp
@@ -278,13 +277,18 @@ func (s *Server) listPublicRepos(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// varsToRepoID checks if a map contains the entries "user" and "repo" and
+// returns them as a store.RepoId or an error if they are missing.
 func (s *Server) varsToRepoID(vars map[string]string) (store.RepoId, error) {
 	iuser := vars["user"]
 	irepo := vars["repo"]
 
-	//TODO: check name and stuff
+	repoId := store.RepoId{iuser, irepo}
+	if iuser == "" || irepo == "" {
+		return repoId, errors.New("Missing arguments.")
+	}
 
-	return store.RepoId{iuser, irepo}, nil
+	return repoId, nil
 }
 
 func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
