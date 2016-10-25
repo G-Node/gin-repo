@@ -105,3 +105,60 @@ func TestMain(m *testing.M) {
 	_ = os.Chdir(cwd)
 	os.Exit(res)
 }
+
+func Test_RepoExists(t *testing.T) {
+	const invalidUser = "iDoNotExist"
+	const invalidRepo = "iDoNotExist"
+	const validUser = "alice"
+	const validRepo = "auth"
+
+	// Test empty RepoId
+	id := RepoId{"", ""}
+	exists, err := repos.RepoExists(id)
+	if err != nil {
+		t.Fatalf("Unexpected error on empty RepoId: %v\n", err)
+	}
+	if exists {
+		t.Fatal("Did not expect true on empty RepoId.")
+	}
+
+	// Test invalid user
+	id = RepoId{invalidUser, ""}
+	exists, err = repos.RepoExists(id)
+	if err != nil {
+		t.Fatalf("Unexpected error on invalid user: %v\n", err)
+	}
+	if exists {
+		t.Fatal("Did not expect true on invalid user.")
+	}
+
+	// Test missing repo name with existing user
+	id = RepoId{validUser, ""}
+	exists, err = repos.RepoExists(id)
+	if err != nil {
+		t.Fatalf("Unexpected error on missing repo: %v\n", err)
+	}
+	if exists {
+		t.Fatal("Did not expect true on missing repo.")
+	}
+
+	// Test invalid repo name with existing user
+	id = RepoId{validUser, invalidRepo}
+	exists, err = repos.RepoExists(id)
+	if err != nil {
+		t.Fatalf("Unexpected error on invalid repo: %v\n", err)
+	}
+	if exists {
+		t.Fatal("Did not expect true on invalid repo.")
+	}
+
+	// Test valid user with valid repository
+	id = RepoId{validUser, validRepo}
+	exists, err = repos.RepoExists(id)
+	if err != nil {
+		t.Fatalf("Unexpected error on valid RepoId: %v\n", err)
+	}
+	if !exists {
+		t.Fatal("Did not expect false on valid RepoId.")
+	}
+}
