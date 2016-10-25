@@ -19,7 +19,7 @@ type Repo struct {
 	Name        string
 	Owner       string
 	Description string
-	Visibility  bool
+	Public      bool
 	Head        string
 }
 
