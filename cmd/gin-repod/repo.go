@@ -300,6 +300,15 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Return StatusBadRequest if an error occurs or if the repository does not exist.
+	// Returning StatusNotFound for non existing repositories could lead to inference
+	// of private repositories later on.
+	exists, err := s.repos.RepoExists(rid)
+	if err != nil || !exists {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
 	if !ok {
 		return
