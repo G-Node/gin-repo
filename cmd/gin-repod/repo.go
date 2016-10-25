@@ -320,16 +320,9 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var visibility string
-	if public {
-		visibility = "public"
-	} else {
-		visibility = "private"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("{%q: %q}", "visibility", visibility)))
+	w.Write([]byte(fmt.Sprintf("{%q: %t}", "Public", public)))
 }
 
 func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
