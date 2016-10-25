@@ -40,3 +40,42 @@ func TestRepoToWire(t *testing.T) {
 		t.Errorf("Expected repository head to be %q but got %q\n", defaultRepoHead, wired.Head)
 	}
 }
+
+func Test_varsToRepoID(t *testing.T) {
+	const user = "userName"
+	const repo = "repoName"
+
+	// test missing arguments
+	vars := make(map[string]string)
+	_, err := server.varsToRepoID(vars)
+	if err == nil {
+		t.Fatal("Expected error on missing arguments.")
+	}
+	// test missing user
+	vars["repo"] = repo
+	_, err = server.varsToRepoID(vars)
+	if err == nil {
+		t.Fatal("Expected error on missing user.")
+	}
+
+	// test missing repository
+	delete(vars, "repo")
+	vars["user"] = user
+	_, err = server.varsToRepoID(vars)
+	if err == nil {
+		t.Fatal("Expected error on missing repository.")
+	}
+
+	// test existing user and repository
+	vars["repo"] = repo
+	id, err := server.varsToRepoID(vars)
+	if err != nil {
+		t.Fatalf("Error on exising user and repository: %v\n", err)
+	}
+	if id.Owner != user {
+		t.Fatalf("Expected user %q, but got %q\n", user, id.Owner)
+	}
+	if id.Name != repo {
+		t.Fatalf("Expected repository %q but got %q\n", repo, id.Name)
+	}
+}
