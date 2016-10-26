@@ -389,7 +389,9 @@ func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//TODO: return the visibility
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(fmt.Sprintf("{%q: %t}", "Public", setPublic)))
 }
 
 func (s *Server) getBranch(w http.ResponseWriter, r *http.Request) {

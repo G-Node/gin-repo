@@ -307,9 +307,21 @@ func Test_setRepoVisibility(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	_, err = makeRequest(t, req, http.StatusOK)
+	resp, err := makeRequest(t, req, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	var visibility struct {
+		Public bool
+	}
+	dec := json.NewDecoder(resp.Body)
+	err = dec.Decode(&visibility)
+	if err != nil {
+		t.Fatalf("Error decoding response: %v\n", err)
+	}
+	if visibility.Public {
+		t.Fatalf("Expected public false for repository %s\n", validPublicRepo)
 	}
 
 	check, err = server.repos.GetRepoVisibility(rid)
