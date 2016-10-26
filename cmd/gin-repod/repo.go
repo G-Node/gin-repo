@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -334,41 +335,58 @@ func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Return StatusBadRequest if an error occurs or if the repository does not exist.
+	// Returning StatusNotFound for non existing repositories could lead to inference
+	// of private repositories later on.
+	exists, err := s.repos.RepoExists(rid)
+	if err != nil || !exists {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	_, ok := s.checkAccess(w, r, rid, store.AdminAccess)
 	if !ok {
 		return
 	}
 
-	decoder := json.NewDecoder(r.Body)
-	var req struct {
-		Visibility string
-	}
+	// Make sure that the request body contains field "public"
+	// with a proper boolean value.
+	var setPublic bool
+	var vis interface{}
 
-	err = decoder.Decode(&req)
-
-	var public bool
-
-	parser := func() bool {
-		if req.Visibility == "public" {
-			public = true
-		} else if req.Visibility == "private" {
-			public = false
-		} else {
-			return false
-		}
-
-		return true
-	}
-
-	if err != nil || req.Visibility == "" || !parser() {
+	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err = s.repos.SetRepoVisibility(rid, public)
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = json.Unmarshal(b, &vis)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	m := vis.(map[string]interface{})
+	if val, ok := m["public"]; ok {
+		switch val.(type) {
+		case bool:
+			setPublic = val.(bool)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
+	err = s.repos.SetRepoVisibility(rid, setPublic)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	//TODO: return the visibility
