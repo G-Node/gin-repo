@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/G-Node/gin-repo/store"
@@ -175,5 +176,152 @@ func Test_getRepoVisibility(t *testing.T) {
 	}
 	if visibility.Public {
 		t.Fatalf("Expected public false for repository %s\n", validPrivateRepo)
+	}
+}
+
+func Test_setRepoVisibility(t *testing.T) {
+	const invalidUser = "iDoNotExist"
+	const invalidRepo = "iDoNotExist"
+	const validUser = "alice"
+	const validPublicRepo = "auth"
+
+	token, err := server.users.TokenForUser(validUser)
+	if err != nil {
+		t.Fatalf("could not make token for %q: %v, %v", validUser, token, err)
+	}
+
+	// test request fail for non existing user
+	url := fmt.Sprintf("/users/%s/repos/%s/visibility", invalidUser, invalidRepo)
+	req, err := http.NewRequest("PUT", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, non existing repository w/o authorization
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", validUser, invalidRepo)
+	req, err = http.NewRequest("PUT", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, non existing repository with authorization
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", validUser, invalidRepo)
+	req, err = http.NewRequest("PUT", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, existing repository w/o authorization
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", validUser, validPublicRepo)
+	req, err = http.NewRequest("PUT", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = makeRequest(t, req, http.StatusForbidden)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, existing repository with authorization and missing body
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", validUser, validPublicRepo)
+	req, err = http.NewRequest("PUT", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, existing repository with authorization and empty body
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", validUser, validPublicRepo)
+	req, err = http.NewRequest("PUT", url, strings.NewReader(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, existing repository with authorization and invalid request body
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", validUser, validPublicRepo)
+	req, err = http.NewRequest("PUT", url, strings.NewReader("{}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, existing repository with authorization and invalid request field type
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", validUser, validPublicRepo)
+	req, err = http.NewRequest("PUT", url, strings.NewReader(`{"public":"True"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test correct request, set public from true to false
+	rid := store.RepoId{Owner: validUser, Name: validPublicRepo}
+	err = server.repos.SetRepoVisibility(rid, true)
+	if err != nil {
+		t.Fatal("Unable to set repository visibility.")
+	}
+	check, err := server.repos.GetRepoVisibility(rid)
+	if err != nil {
+		t.Fatalf("Error fetching repository visibility: %v\n", err)
+	}
+	if !check {
+		t.Fatalf("Invalid repository visibility: %t\n", check)
+	}
+
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", validUser, validPublicRepo)
+	req, err = http.NewRequest("PUT", url, strings.NewReader(`{"public":false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	_, err = makeRequest(t, req, http.StatusOK)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	check, err = server.repos.GetRepoVisibility(rid)
+	if err != nil {
+		t.Fatalf("Error fetching repository visibility: %v\n", err)
+	}
+	if check {
+		t.Fatalf("Invalid repository visibility: %t\n", check)
+	}
+	// reset repository setting
+	err = server.repos.SetRepoVisibility(rid, true)
+	if err != nil {
+		t.Fatal("Unable to set repository visibility.")
 	}
 }
