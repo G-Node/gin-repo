@@ -44,19 +44,6 @@ after_success:
   - docker tag gin-repod:latest gnode/gin-repo:travis-$TRAVIS_BUILD_NUMBER
   - docker push gnode/gin-repo
   # create coverage profile for all packages providing tests
-  - echo "mode: count" > profile.cov;
-    for Dir in $(go list ./...);
-    do
-      currDir=$(echo $Dir | sed 's/github.com\/G-Node\/gin-repo\///g');
-      currCount=$(ls -l $currDir/*.go 2>/dev/null | wc -l);
-      if [ $currCount -gt 0 ];
-      then
-        go test -covermode=count -coverprofile=tmp.out $Dir;
-        if [ -f tmp.out ];
-        then
-          cat tmp.out | grep -v "mode: count" >> profile.cov;
-        fi
-      fi
-    done
+  - bash coverage.sh
   # upload coverage profile to coveralls
   - goveralls -coverprofile=profile.cov -service=travis-ci
