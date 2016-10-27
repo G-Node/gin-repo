@@ -157,6 +157,7 @@ type Commit struct {
 	Author    Signature
 	Committer Signature
 	Message   string
+	GPGSig    string
 }
 
 //Date returns the commit timestamps (with the correct location).
