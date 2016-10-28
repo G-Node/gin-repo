@@ -3,19 +3,19 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-
-	"github.com/gorilla/mux"
-
 	"regexp"
 
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
+	"github.com/gorilla/mux"
 )
 
 var nameChecker *regexp.Regexp
@@ -90,7 +90,6 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) repoToWire(id store.RepoId, repo *git.Repository) (wire.Repo, error) {
-
 	public, err := s.repos.GetRepoVisibility(id)
 	if err != nil {
 		s.log(WARN, "could not get repo visibility: %v", err)
@@ -102,7 +101,7 @@ func (s *Server) repoToWire(id store.RepoId, repo *git.Repository) (wire.Repo, e
 		Owner:       id.Owner,
 		Description: repo.ReadDescription(),
 		Head:        "master",
-		Visibility:  public,
+		Public:      public,
 	}
 
 	return wr, nil
@@ -279,13 +278,18 @@ func (s *Server) listPublicRepos(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// varsToRepoID checks if a map contains the entries "user" and "repo" and
+// returns them as a store.RepoId or an error if they are missing.
 func (s *Server) varsToRepoID(vars map[string]string) (store.RepoId, error) {
 	iuser := vars["user"]
 	irepo := vars["repo"]
 
-	//TODO: check name and stuff
+	repoId := store.RepoId{iuser, irepo}
+	if iuser == "" || irepo == "" {
+		return repoId, errors.New("Missing arguments.")
+	}
 
-	return store.RepoId{iuser, irepo}, nil
+	return repoId, nil
 }
 
 func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
@@ -297,6 +301,15 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Return StatusBadRequest if an error occurs or if the repository does not exist.
+	// Returning StatusNotFound for non existing repositories could lead to inference
+	// of private repositories later on.
+	exists, err := s.repos.RepoExists(rid)
+	if err != nil || !exists {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
 	if !ok {
 		return
@@ -304,24 +317,13 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 
 	public, err := s.repos.GetRepoVisibility(rid)
 	if err != nil {
-		if os.IsNotExist(err) {
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-		}
+		w.WriteHeader(http.StatusBadRequest)
 		return
-	}
-
-	var visibility string
-	if public {
-		visibility = "public"
-	} else {
-		visibility = "private"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("{%q: %q}", "visibility", visibility)))
+	w.Write([]byte(fmt.Sprintf("{%q: %t}", "Public", public)))
 }
 
 func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
@@ -333,44 +335,63 @@ func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Return StatusBadRequest if an error occurs or if the repository does not exist.
+	// Returning StatusNotFound for non existing repositories could lead to inference
+	// of private repositories later on.
+	exists, err := s.repos.RepoExists(rid)
+	if err != nil || !exists {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	_, ok := s.checkAccess(w, r, rid, store.AdminAccess)
 	if !ok {
 		return
 	}
 
-	decoder := json.NewDecoder(r.Body)
-	var req struct {
-		Visibility string
-	}
+	// Make sure that the request body contains field "public"
+	// with a proper boolean value.
+	var setPublic bool
+	var vis interface{}
 
-	err = decoder.Decode(&req)
-
-	var public bool
-
-	parser := func() bool {
-		if req.Visibility == "public" {
-			public = true
-		} else if req.Visibility == "private" {
-			public = false
-		} else {
-			return false
-		}
-
-		return true
-	}
-
-	if err != nil || req.Visibility == "" || !parser() {
+	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err = s.repos.SetRepoVisibility(rid, public)
-
+	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = json.Unmarshal(b, &vis)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	m := vis.(map[string]interface{})
+	if val, ok := m["public"]; ok {
+		switch val.(type) {
+		case bool:
+			setPublic = val.(bool)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
-	//TODO: return the visibility
+	err = s.repos.SetRepoVisibility(rid, setPublic)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(fmt.Sprintf("{%q: %t}", "Public", setPublic)))
 }
 
 func (s *Server) getBranch(w http.ResponseWriter, r *http.Request) {

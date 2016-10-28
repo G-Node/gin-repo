@@ -69,5 +69,5 @@ Authorization: Bearer :token
 Content-Type: application/json
 
 {
-        "visibility": "public"
+        "public": true
 }

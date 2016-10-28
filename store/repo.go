@@ -112,6 +112,20 @@ func (store *RepoStore) idToPath(id RepoId) string {
 	return filepath.Join(store.gitPath(), id.Owner, id.Name+".git")
 }
 
+// RepoExists returns true if the path to a provided RepoId exists, false otherwise.
+func (store *RepoStore) RepoExists(id RepoId) (bool, error) {
+	repoPath := store.idToPath(id)
+	_, err := os.Stat(repoPath)
+
+	if err != nil && os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (store *RepoStore) CreateRepo(id RepoId) (*git.Repository, error) {
 	path := store.idToPath(id)
 

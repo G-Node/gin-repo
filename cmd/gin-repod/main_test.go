@@ -58,7 +58,7 @@ func NewGet(t *testing.T, url string, user string) *http.Request {
 	if user != "" {
 		token, err = server.users.TokenForUser(user)
 		if err != nil {
-			t.Fatalf("could not make token for alice: %v", token)
+			t.Fatalf("could not make token for %q: %v, %v", user, token, err)
 		}
 	}
 
