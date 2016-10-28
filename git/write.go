@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"strings"
 )
 
 func writeHeader(o Object, w *bufio.Writer) (n int64, err error) {
@@ -64,13 +65,23 @@ func (c *Commit) WriteTo(writer io.Writer) (int64, error) {
 		return n, err
 	}
 
-	x, err = w.WriteString(fmt.Sprintf("committer %s\n\n", c.Committer))
+	x, err = w.WriteString(fmt.Sprintf("committer %s\n", c.Committer))
 	n += int64(x)
 	if err != nil {
 		return n, err
 	}
 
-	x, err = w.WriteString(c.Message)
+	if c.GPGSig != "" {
+		s := strings.Replace(c.GPGSig, "\n", "\n ", -1)
+		x, err = w.WriteString(fmt.Sprintf("gpgsig %s\n", s))
+		n += int64(x)
+		if err != nil {
+			return n, err
+		}
+
+	}
+
+	x, err = w.WriteString(fmt.Sprintf("\n%s", c.Message))
 	n += int64(x)
 	if err != nil {
 		return n, err

@@ -2,6 +2,7 @@ package git
 
 import (
 	"bufio"
+	"bytes"
 	"compress/zlib"
 	"fmt"
 	"io"
@@ -58,6 +59,25 @@ func parseSignature(line string) (Signature, error) {
 	u.Offset = time.FixedZone(off, o)
 
 	return u, nil
+}
+
+func parseGPGSig(r *bufio.Reader, w *bytes.Buffer) error {
+	for {
+		l, err := r.ReadString('\n')
+		if err != nil {
+			return nil
+		} else if l[0] == ' ' {
+			_, err = w.WriteString(fmt.Sprintf("\n%s", strings.Trim(l, " \n")))
+			if err != nil {
+				return err
+			}
+			continue
+		} else if l[0] == '\n' {
+			return r.UnreadByte()
+		}
+
+		return fmt.Errorf("Unexpected end of gpg signature")
+	}
 }
 
 func openRawObject(path string) (gitObject, error) {
@@ -142,6 +162,10 @@ func parseCommit(obj gitObject) (*Commit, error) {
 			c.Author, err = parseSignature(strings.Trim(tail, "\n"))
 		case "committer":
 			c.Committer, err = parseSignature(strings.Trim(tail, "\n"))
+		case "gpgsig":
+			sw := bytes.NewBufferString(strings.Trim(tail, "\n"))
+			err = parseGPGSig(br, sw)
+			c.GPGSig = sw.String()
 		}
 
 		if err != nil || head == "\n" {
