@@ -30,6 +30,10 @@ install:
 
 after_success:
   - if [ $TRAVIS_GO_VERSION == "tip" ]; then exit 0; fi
+  # create coverage profile for all packages providing tests
+  - bash coverage.sh
+  # upload coverage profile to coveralls
+  - goveralls -coverprofile=profile.cov -service=travis-ci
   - if [ -z ${DOCKER_PASS+x} ]; then echo "No DOCKER_PASS set."; exit 0; fi
   - docker login -u="$DOCKER_USER" -p="$DOCKER_PASS" || exit 1
   - if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
@@ -43,7 +47,3 @@ after_success:
     fi
   - docker tag gin-repod:latest gnode/gin-repo:travis-$TRAVIS_BUILD_NUMBER
   - docker push gnode/gin-repo
-  # create coverage profile for all packages providing tests
-  - bash coverage.sh
-  # upload coverage profile to coveralls
-  - goveralls -coverprofile=profile.cov -service=travis-ci
