@@ -630,3 +630,8 @@ func (s *Server) browseRepo(w http.ResponseWriter, r *http.Request) {
 
 	s.objectToWire(w, repo, obj)
 }
+
+// patchRepoSettings
+func (s *Server) patchRepoSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
