@@ -631,7 +631,68 @@ func (s *Server) browseRepo(w http.ResponseWriter, r *http.Request) {
 	s.objectToWire(w, repo, obj)
 }
 
-// patchRepoSettings
+// patchRepoSettings patches repository description and public status.
+// The request body has to contain valid JSON containing "description" as key
+// and a string as value, "public" as key and a boolean value as value or both.
+// A request that does not contain any of these two keys will result in a BadRequest status.
 func (s *Server) patchRepoSettings(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Return StatusBadRequest if an error occurs or if the repository does not exist.
+	// Returning StatusNotFound for non existing repositories could lead to inference
+	// of private repositories later on.
+	exists, err := s.repos.RepoExists(rid)
+	if err != nil || !exists {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkAccess(w, r, rid, store.AdminAccess)
+	if !ok {
+		return
+	}
+
+	// Pointer fields are used to make sure, that boolean values are
+	// not updated, when the corresponding field was not
+	// included in the submitted JSON.
+	var patch struct {
+		Description *string `json:"description,omitempty"`
+		Public      *bool   `json:"public,omitempty"`
+	}
+
+	if r.Body == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = json.Unmarshal(b, &patch)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if patch.Description == nil && patch.Public == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	} else if patch.Description != nil && patch.Public != nil {
+		fmt.Printf("Blub: %v, %q, %t\n", patch, *patch.Description, *patch.Public)
+	} else if patch.Description != nil {
+		fmt.Printf("Blub: %v, %q\n", patch, *patch.Description)
+	} else if patch.Public != nil {
+		fmt.Printf("Blub: %v, %t\n", patch, *patch.Public)
+	}
+
 	w.WriteHeader(http.StatusOK)
 }

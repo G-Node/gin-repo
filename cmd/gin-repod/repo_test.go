@@ -337,3 +337,167 @@ func Test_setRepoVisibility(t *testing.T) {
 		t.Fatal("Unable to set repository visibility.")
 	}
 }
+
+func Test_patchRepoSettings(t *testing.T) {
+	const settingsUrl = "/users/%s/repos/%s/settings"
+	const invalidUser = "iDoNotExist"
+	const invalidRepo = "iDoNotExist"
+	const validUser = "alice"
+	const validRepo = "auth"
+
+	// TODO the following section is actually just a copy of the first part
+	// of the get/setRepoVisibility tests. Good enough for now, but unify at some point.
+	token, err := server.users.TokenForUser(validUser)
+	if err != nil {
+		t.Fatalf("could not make token for %q: %v, %v", validUser, token, err)
+	}
+
+	// test request fail for non existing user.
+	url := fmt.Sprintf(settingsUrl, invalidUser, invalidRepo)
+	req, err := http.NewRequest("PATCH", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, non existing repository w/o authorization.
+	url = fmt.Sprintf(settingsUrl, validUser, invalidRepo)
+	req, err = http.NewRequest("PATCH", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, non existing repository with authorization.
+	url = fmt.Sprintf(settingsUrl, validUser, invalidRepo)
+	req, err = http.NewRequest("PATCH", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, existing repository w/o authorization.
+	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
+	req, err = http.NewRequest("PATCH", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = makeRequest(t, req, http.StatusForbidden)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, existing repository with authorization and missing body.
+	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
+	req, err = http.NewRequest("PATCH", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, existing repository with authorization and empty body.
+	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
+	req, err = http.NewRequest("PATCH", url, strings.NewReader(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, existing repository with authorization and missing patchable field.
+	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
+	req, err = http.NewRequest("PATCH", url, strings.NewReader(`{"otherfield":"has nowhere to patch"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for existing user, existing repository with authorization and invalid patchable field value.
+	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
+	req, err = http.NewRequest("PATCH", url, strings.NewReader(`{"public": "string"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	_, err = makeRequest(t, req, http.StatusBadRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request patch for existing user, existing repository with authorization and "public" only.
+	const newPublic = true
+
+	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
+	req, err = http.NewRequest("PATCH", url, strings.NewReader(fmt.Sprintf(`{"public": %t}`, newPublic)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	_, err = makeRequest(t, req, http.StatusOK)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO check that value is actually updated, the other stays unchanged.
+
+	// test request patch for existing user, existing repository with authorization and "description" only.
+	const newDesc = "a new description"
+
+	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
+	req, err = http.NewRequest("PATCH", url, strings.NewReader(fmt.Sprintf(`{"description": %q}`, newDesc)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	_, err = makeRequest(t, req, http.StatusOK)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO check that value is actually updated, the other stays unchanged.
+
+	// test request patch for existing user, existing repository with authorization and both "description" and "public".
+	const anotherPublic = false
+	const anotherDesc = "another new description"
+	body := fmt.Sprintf(`{"description": %q, "public": %t}`, anotherDesc, anotherPublic)
+
+	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
+	req, err = http.NewRequest("PATCH", url, strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	_, err = makeRequest(t, req, http.StatusOK)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO check that both values are updated.
+}
