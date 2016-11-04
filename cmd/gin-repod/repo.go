@@ -11,12 +11,12 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
 	"github.com/gorilla/mux"
-	"strings"
 )
 
 var nameChecker *regexp.Regexp

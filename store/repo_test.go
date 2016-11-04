@@ -3,12 +3,12 @@ package store
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/G-Node/gin-repo/internal/testbed"
-	"path/filepath"
-	"strings"
 )
 
 var users UserStore
