@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
 )
 
@@ -185,6 +186,12 @@ func Test_setRepoVisibility(t *testing.T) {
 	const validUser = "alice"
 	const validPublicRepo = "auth"
 
+	// Currently the test repositories are set up only once.
+	// This means tests changing repository settings are not independent,
+	// if repository settings are changed, they have to be reset after the test.
+	// TODO organize the repo setup for tests so that they are reset for every test.
+	defer server.repos.SetRepoVisibility(store.RepoId{Owner: validUser, Name: validPublicRepo}, true)
+
 	token, err := server.users.TokenForUser(validUser)
 	if err != nil {
 		t.Fatalf("could not make token for %q: %v, %v", validUser, token, err)
@@ -345,6 +352,9 @@ func Test_patchRepoSettings(t *testing.T) {
 	const validUser = "alice"
 	const validRepo = "auth"
 
+	// Reset repository setting after the test
+	defer server.repos.SetRepoVisibility(store.RepoId{Owner: validUser, Name: validRepo}, true)
+
 	// TODO the following section is actually just a copy of the first part
 	// TODO of the get/setRepoVisibility tests. Good enough for now, but unify at some point.
 
@@ -463,9 +473,24 @@ func Test_patchRepoSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// set up for valid PATCH tests
+	const repoStartDesc = "description"
+	const repoStartVisibility = false
+	repoId := store.RepoId{Owner: validUser, Name: validRepo}
+	repo, err := git.OpenRepository(server.repos.IdToPath(repoId))
+
+	err = repo.WriteDescription(repoStartDesc)
+	if err != nil {
+		t.Fatalf("Error setting up repository description for test: %v\n", err)
+	}
+	err = server.repos.SetRepoVisibility(repoId, repoStartVisibility)
+	if err != nil {
+		t.Fatalf("Error setting up repository visibility for test: %v\n", err)
+	}
+	oldRepoDesc := repo.ReadDescription()
+
 	// test request patch for existing user, existing repository with authorization and "public" only.
 	const newPublic = true
-
 	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
 	req, err = http.NewRequest("PATCH", url, strings.NewReader(fmt.Sprintf(`{"public": %t}`, newPublic)))
 	if err != nil {
@@ -478,9 +503,17 @@ func Test_patchRepoSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO check that value is actually updated, the other stays unchanged.
+	newRepoDesc := repo.ReadDescription()
+	newRepoVis, _ := server.repos.GetRepoVisibility(repoId)
+	if newRepoDesc != oldRepoDesc {
+		t.Fatalf("Expected description to be unchanged %q, but was %q\n", oldRepoDesc, newRepoDesc)
+	}
+	if newRepoVis != newPublic {
+		t.Fatal("Repository visibility was not updated.")
+	}
 
 	// test request patch for existing user, existing repository with authorization and "description" only.
+	oldRepoVis, _ := server.repos.GetRepoVisibility(repoId)
 	const newDesc = "a new description"
 
 	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
@@ -495,7 +528,14 @@ func Test_patchRepoSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO check that value is actually updated, the other stays unchanged.
+	newRepoDesc = repo.ReadDescription()
+	newRepoVis, _ = server.repos.GetRepoVisibility(repoId)
+	if newRepoDesc != newDesc {
+		t.Fatalf("Expected description to be %q, but was %q\n", newDesc, newRepoDesc)
+	}
+	if newRepoVis != oldRepoVis {
+		t.Fatalf("Expected visbility to be %t but was %t\n", oldRepoVis, newRepoVis)
+	}
 
 	// test request patch for existing user, existing repository with authorization and both "description" and "public".
 	const anotherPublic = false
@@ -514,5 +554,12 @@ func Test_patchRepoSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO check that both values are updated.
+	newRepoDesc = repo.ReadDescription()
+	newRepoVis, _ = server.repos.GetRepoVisibility(repoId)
+	if newRepoDesc != anotherDesc {
+		t.Fatalf("Expected description to be %q, but was %q\n", anotherDesc, newRepoDesc)
+	}
+	if newRepoVis != anotherPublic {
+		t.Fatalf("Expected visbility to be %t but was %t\n", anotherPublic, newRepoVis)
+	}
 }

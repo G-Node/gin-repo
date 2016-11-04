@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/G-Node/gin-repo/internal/testbed"
-	"strings"
 	"path/filepath"
+	"strings"
 )
 
 var users UserStore
@@ -169,10 +169,10 @@ func TestRepoStore_IdToPath(t *testing.T) {
 	const repoOwner = "alice"
 	const repoName = "auth"
 
-	r := RepoId{ Owner: repoOwner, Name: repoName }
+	r := RepoId{Owner: repoOwner, Name: repoName}
 	path := repos.IdToPath(r)
 
-	if !strings.Contains(path, fmt.Sprintf(filepath.Join("repos", "git", repoOwner, repoName + ".git"))) {
+	if !strings.Contains(path, fmt.Sprintf(filepath.Join("repos", "git", repoOwner, repoName+".git"))) {
 		t.Fatalf("Received unexpected repository path: %q\n", path)
 	}
 }

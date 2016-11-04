@@ -691,16 +691,56 @@ func (s *Server) patchRepoSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var respBody string
 	if patch.Description == nil && patch.Public == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	} else if patch.Description != nil && patch.Public != nil {
-		fmt.Printf("Blub: %v, %q, %t\n", patch, *patch.Description, *patch.Public)
+		err = s.repos.SetRepoVisibility(rid, *patch.Public)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		repo, err := git.OpenRepository(s.repos.IdToPath(rid))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = repo.WriteDescription(*patch.Description)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		respBody = fmt.Sprintf("{%q: %t, %q: %q}", "public", *patch.Public, "description", *patch.Description)
+
 	} else if patch.Description != nil {
-		fmt.Printf("Blub: %v, %q\n", patch, *patch.Description)
+		repo, err := git.OpenRepository(s.repos.IdToPath(rid))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = repo.WriteDescription(*patch.Description)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		respBody = fmt.Sprintf("{%q: %q}", "description", *patch.Description)
+
 	} else if patch.Public != nil {
-		fmt.Printf("Blub: %v, %t\n", patch, *patch.Public)
+		err = s.repos.SetRepoVisibility(rid, *patch.Public)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		respBody = fmt.Sprintf("{%q: %t}", "public", *patch.Public)
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(respBody))
 }
