@@ -92,12 +92,36 @@ func Test_getRepoVisibility(t *testing.T) {
 	const validPublicRepo = "auth"
 	const validPrivateRepo = "exrepo"
 
-	// test request fail for non existing user
+	// test request fail for missing authorization header
 	url := fmt.Sprintf("/users/%s/repos/%s/visibility", invalidUser, invalidRepo)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = makeRequest(t, req, http.StatusForbidden)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for invalid authorization header
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", invalidUser, invalidRepo)
+	req, err = http.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "")
+	_, err = makeRequest(t, req, http.StatusForbidden)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for non existing user w/o authorization
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", invalidUser, invalidRepo)
+	req, err = http.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer ")
 	_, err = makeRequest(t, req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
@@ -109,6 +133,7 @@ func Test_getRepoVisibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Header.Add("Authorization", "Bearer ")
 	_, err = makeRequest(t, req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)

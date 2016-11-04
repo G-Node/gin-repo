@@ -294,6 +294,12 @@ func (s *Server) varsToRepoID(vars map[string]string) (store.RepoId, error) {
 }
 
 func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
+	header := r.Header.Get("Authorization")
+	if header == "" || !strings.HasPrefix(header, "Bearer ") {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	ivars := mux.Vars(r)
 	rid, err := s.varsToRepoID(ivars)
 
