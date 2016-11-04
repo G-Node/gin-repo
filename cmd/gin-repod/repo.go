@@ -16,6 +16,7 @@ import (
 	"github.com/G-Node/gin-repo/store"
 	"github.com/G-Node/gin-repo/wire"
 	"github.com/gorilla/mux"
+	"strings"
 )
 
 var nameChecker *regexp.Regexp
@@ -632,10 +633,17 @@ func (s *Server) browseRepo(w http.ResponseWriter, r *http.Request) {
 }
 
 // patchRepoSettings patches repository description and public status.
+// The request header has to contain an authorization header with a valid token.
 // The request body has to contain valid JSON containing "description" as key
 // and a string as value, "public" as key and a boolean value as value or both.
 // A request that does not contain any of these two keys will result in a BadRequest status.
 func (s *Server) patchRepoSettings(w http.ResponseWriter, r *http.Request) {
+	header := r.Header.Get("Authorization")
+	if header == "" || !strings.HasPrefix(header, "Bearer ") {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	ivars := mux.Vars(r)
 	rid, err := s.varsToRepoID(ivars)
 

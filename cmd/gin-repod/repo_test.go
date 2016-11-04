@@ -346,35 +346,61 @@ func Test_patchRepoSettings(t *testing.T) {
 	const validRepo = "auth"
 
 	// TODO the following section is actually just a copy of the first part
-	// of the get/setRepoVisibility tests. Good enough for now, but unify at some point.
+	// TODO of the get/setRepoVisibility tests. Good enough for now, but unify at some point.
+
 	token, err := server.users.TokenForUser(validUser)
 	if err != nil {
 		t.Fatalf("could not make token for %q: %v, %v", validUser, token, err)
 	}
 
-	// test request fail for non existing user.
+	// test request fail for missing authorization header
 	url := fmt.Sprintf(settingsUrl, invalidUser, invalidRepo)
 	req, err := http.NewRequest("PATCH", url, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = makeRequest(t, req, http.StatusForbidden)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for missing bearer token in authorization header
+	url = fmt.Sprintf(settingsUrl, invalidUser, invalidRepo)
+	req, err = http.NewRequest("PATCH", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "")
+	_, err = makeRequest(t, req, http.StatusForbidden)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for non existing user.
+	url = fmt.Sprintf(settingsUrl, invalidUser, invalidRepo)
+	req, err = http.NewRequest("PATCH", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer ")
 	_, err = makeRequest(t, req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// test request fail for existing user, non existing repository w/o authorization.
+	// test request fail for existing user, non existing repository w/o proper authorization.
 	url = fmt.Sprintf(settingsUrl, validUser, invalidRepo)
 	req, err = http.NewRequest("PATCH", url, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Header.Add("Authorization", "Bearer ")
 	_, err = makeRequest(t, req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// test request fail for existing user, non existing repository with authorization.
+	// test request fail for existing user, non existing repository with proper authorization.
 	url = fmt.Sprintf(settingsUrl, validUser, invalidRepo)
 	req, err = http.NewRequest("PATCH", url, nil)
 	if err != nil {
@@ -382,17 +408,6 @@ func Test_patchRepoSettings(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	_, err = makeRequest(t, req, http.StatusBadRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// test request fail for existing user, existing repository w/o authorization.
-	url = fmt.Sprintf(settingsUrl, validUser, validRepo)
-	req, err = http.NewRequest("PATCH", url, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = makeRequest(t, req, http.StatusForbidden)
 	if err != nil {
 		t.Fatal(err)
 	}
