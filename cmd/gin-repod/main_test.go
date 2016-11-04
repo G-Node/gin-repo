@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -78,6 +79,27 @@ func makeRequest(req *http.Request, code int) (*httptest.ResponseRecorder, error
 	}
 
 	return rr, nil
+}
+
+func RunRequest(method string, url string, body io.Reader,
+	header map[string]string, code int) (*httptest.ResponseRecorder, error) {
+
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	if header != nil && len(header) > 0 {
+		for k, v := range header {
+			req.Header.Add(k, v)
+		}
+	}
+
+	resp, err := makeRequest(req, code)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 func TestBranchAccess(t *testing.T) {
