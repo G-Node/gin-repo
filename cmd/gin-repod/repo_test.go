@@ -98,7 +98,7 @@ func Test_getRepoVisibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = makeRequest(t, req, http.StatusForbidden)
+	_, err = makeRequest(req, http.StatusForbidden)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func Test_getRepoVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "")
-	_, err = makeRequest(t, req, http.StatusForbidden)
+	_, err = makeRequest(req, http.StatusForbidden)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func Test_getRepoVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "Bearer ")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func Test_getRepoVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "Bearer ")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func Test_getRepoVisibility(t *testing.T) {
 		t.Fatalf("could not make token for %q: %v, %v", validUser, token, err)
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func Test_getRepoVisibility(t *testing.T) {
 		t.Fatalf("could not make token for %q: %v, %v", validUser, token, err)
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
-	resp, err := makeRequest(t, req, http.StatusOK)
+	resp, err := makeRequest(req, http.StatusOK)
 	if err != nil {
 		t.Fatalf("Unexpected error on public repository: %v\n", err)
 	}
@@ -190,7 +190,7 @@ func Test_getRepoVisibility(t *testing.T) {
 		t.Fatalf("could not make token for %q: %v, %v", validUser, token, err)
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
-	resp, err = makeRequest(t, req, http.StatusOK)
+	resp, err = makeRequest(req, http.StatusOK)
 	if err != nil {
 		t.Fatalf("Unexpected error on public repository: %v\n", err)
 	}
@@ -228,7 +228,7 @@ func Test_setRepoVisibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = makeRequest(t, req, http.StatusForbidden)
+	_, err = makeRequest(req, http.StatusForbidden)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func Test_setRepoVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "")
-	_, err = makeRequest(t, req, http.StatusForbidden)
+	_, err = makeRequest(req, http.StatusForbidden)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +252,7 @@ func Test_setRepoVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "Bearer ")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +264,7 @@ func Test_setRepoVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "Bearer ")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +276,7 @@ func Test_setRepoVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "Bearer ")
-	_, err = makeRequest(t, req, http.StatusForbidden)
+	_, err = makeRequest(req, http.StatusForbidden)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func Test_setRepoVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +301,7 @@ func Test_setRepoVisibility(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +314,7 @@ func Test_setRepoVisibility(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +327,7 @@ func Test_setRepoVisibility(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -353,7 +353,7 @@ func Test_setRepoVisibility(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	resp, err := makeRequest(t, req, http.StatusOK)
+	resp, err := makeRequest(req, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +408,7 @@ func Test_patchRepoSettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = makeRequest(t, req, http.StatusForbidden)
+	_, err = makeRequest(req, http.StatusForbidden)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,7 +420,7 @@ func Test_patchRepoSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "")
-	_, err = makeRequest(t, req, http.StatusForbidden)
+	_, err = makeRequest(req, http.StatusForbidden)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -432,7 +432,7 @@ func Test_patchRepoSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "Bearer ")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -444,7 +444,7 @@ func Test_patchRepoSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "Bearer ")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -456,7 +456,7 @@ func Test_patchRepoSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -468,7 +468,7 @@ func Test_patchRepoSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -481,7 +481,7 @@ func Test_patchRepoSettings(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -494,7 +494,7 @@ func Test_patchRepoSettings(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -507,7 +507,7 @@ func Test_patchRepoSettings(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	_, err = makeRequest(t, req, http.StatusBadRequest)
+	_, err = makeRequest(req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -537,7 +537,7 @@ func Test_patchRepoSettings(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	_, err = makeRequest(t, req, http.StatusOK)
+	_, err = makeRequest(req, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -562,7 +562,7 @@ func Test_patchRepoSettings(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	_, err = makeRequest(t, req, http.StatusOK)
+	_, err = makeRequest(req, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -588,7 +588,7 @@ func Test_patchRepoSettings(t *testing.T) {
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
-	_, err = makeRequest(t, req, http.StatusOK)
+	_, err = makeRequest(req, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
