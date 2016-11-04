@@ -197,12 +197,36 @@ func Test_setRepoVisibility(t *testing.T) {
 		t.Fatalf("could not make token for %q: %v, %v", validUser, token, err)
 	}
 
-	// test request fail for non existing user
+	// test request fail for missing authorization header
 	url := fmt.Sprintf("/users/%s/repos/%s/visibility", invalidUser, invalidRepo)
 	req, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = makeRequest(t, req, http.StatusForbidden)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for invalid authorization header
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", invalidUser, invalidRepo)
+	req, err = http.NewRequest("PUT", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "")
+	_, err = makeRequest(t, req, http.StatusForbidden)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// test request fail for non existing user w/o authorization
+	url = fmt.Sprintf("/users/%s/repos/%s/visibility", invalidUser, invalidRepo)
+	req, err = http.NewRequest("PUT", url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Authorization", "Bearer ")
 	_, err = makeRequest(t, req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
@@ -214,18 +238,7 @@ func Test_setRepoVisibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = makeRequest(t, req, http.StatusBadRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// test request fail for existing user, non existing repository with authorization
-	url = fmt.Sprintf("/users/%s/repos/%s/visibility", validUser, invalidRepo)
-	req, err = http.NewRequest("PUT", url, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Authorization", "Bearer ")
 	_, err = makeRequest(t, req, http.StatusBadRequest)
 	if err != nil {
 		t.Fatal(err)
@@ -237,6 +250,7 @@ func Test_setRepoVisibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Header.Add("Authorization", "Bearer ")
 	_, err = makeRequest(t, req, http.StatusForbidden)
 	if err != nil {
 		t.Fatal(err)
