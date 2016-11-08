@@ -837,3 +837,7 @@ func (s *Server) putRepoCollaborator(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+func (s *Server) deleteRepoCollaborator(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
