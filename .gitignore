@@ -12,3 +12,6 @@ contrib/**/exrepo
 scratchpad.go
 
 **/gin.secret
+
+# test coverage files
+*.cov
