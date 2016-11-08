@@ -148,6 +148,9 @@ func (store *RepoStore) CreateRepo(id RepoId) (*git.Repository, error) {
 	gin := filepath.Join(path, "gin")
 	os.Mkdir(gin, 0775) //TODO: what to do about errors?
 
+	sharing := filepath.Join(gin, "sharing")
+	os.Mkdir(sharing, 0775)
+
 	return repo, nil
 }
 
