@@ -9,6 +9,8 @@ import (
 
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
+	"os"
+	"path/filepath"
 )
 
 const repoUser = "alice"
@@ -552,4 +554,156 @@ func Test_listRepoCollaborators(t *testing.T) {
 	if len(collaborators) != 1 {
 		t.Errorf("Expected one collaborator but got: %v\n", collaborators)
 	}
+}
+
+func Test_putRepoCollaborator(t *testing.T) {
+	const method = "PUT"
+	const urlTemplate = "/users/%s/repos/%s/collaborators/%s"
+
+	const invalidUser = "iDoNotExist"
+	const invalidRepo = "iDoNotExist"
+	const validUser = "alice"
+
+	const validRepoCollaborator = "openfmri"
+	const validRepoEmpty = "auth"
+
+	const invalidPutUser = "iDoNotExist"
+	const validPutUserAdditional = "gicmo"
+	const validPutUser = "bob"
+	const defaultAccess = "can-push"
+
+	headerMap := make(map[string]string)
+
+	token, err := server.users.TokenForUser(validUser)
+	if err != nil {
+		t.Fatalf("Could not make token for %q: %v, %v", validUser, token, err)
+	}
+
+	// test request fail for missing authorization header.
+	url := fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidPutUser)
+	_, err = RunRequest(method, url, nil, nil, http.StatusForbidden)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for missing bearer token in authorization header.
+	headerMap["Authorization"] = ""
+	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidPutUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusForbidden)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for non existing user.
+	headerMap["Authorization"] = "Bearer "
+	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, validPutUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, non existing repository.
+	headerMap["Authorization"] = "Bearer "
+	url = fmt.Sprintf(urlTemplate, validUser, invalidRepo, validPutUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, existing repository w/o proper authorization.
+	headerMap["Authorization"] = "Bearer "
+	url = fmt.Sprintf(urlTemplate, validUser, invalidRepo, validPutUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// TODO test request fail for existing user, existing repository, invalid collaborator.
+
+	// test request fail for existing user, existing repository, own user as collaborator.
+	headerMap["Authorization"] = "Bearer " + token
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, existing repository, already registered existing collaborator.
+	headerMap["Authorization"] = "Bearer " + token
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validPutUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusConflict)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, existing repository, new collaborator, missing body.
+	headerMap["Authorization"] = "Bearer " + token
+	headerMap["Content-Type"] = "application/json"
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validPutUserAdditional)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, existing repository, new collaborator, missing body content.
+	headerMap["Authorization"] = "Bearer " + token
+	headerMap["Content-Type"] = "application/json"
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validPutUserAdditional)
+	_, err = RunRequest(method, url, strings.NewReader(""), headerMap, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, existing repository, new collaborator, invalid body: permission value.
+	headerMap["Authorization"] = "Bearer " + token
+	headerMap["Content-Type"] = "application/json"
+	body := fmt.Sprint(`{"permission": "invalid value"}`)
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validPutUserAdditional)
+	_, err = RunRequest(method, url, strings.NewReader(body), headerMap, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test valid request for existing user, existing repository, adding existing collaborator to non empty shared folder.
+	repoId := store.RepoId{Owner: validUser, Name: validRepoCollaborator}
+	// TODO maybe there is a better way to ensure a clean test environment for other tests
+	defer os.Remove(filepath.Join(server.repos.IdToPath(repoId), "gin", "sharing", validPutUserAdditional))
+
+	headerMap["Authorization"] = "Bearer " + token
+	headerMap["Content-Type"] = "application/json"
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validPutUserAdditional)
+	body = fmt.Sprintf(`{"permission": %q}`, defaultAccess)
+	_, err = RunRequest(method, url, strings.NewReader(body), headerMap, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	level, err := server.repos.GetAccessLevel(repoId, validPutUserAdditional)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	if level.String() != defaultAccess {
+		t.Fatalf("Expected user to be present with access level %q but got %q.\n", defaultAccess, level.String())
+	}
+
+	// test valid request for existing user, existing repository, adding existing collaborator to empty shared folder.
+	repoId = store.RepoId{Owner: validUser, Name: validRepoEmpty}
+	// TODO maybe there is a better way to ensure a clean test environment for other tests
+	defer os.Remove(filepath.Join(server.repos.IdToPath(repoId), "gin", "sharing", validPutUser))
+
+	headerMap["Authorization"] = "Bearer " + token
+	headerMap["Content-Type"] = "application/json"
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoEmpty, validPutUser)
+	body = fmt.Sprintf(`{"permission": %q}`, defaultAccess)
+	_, err = RunRequest(method, url, strings.NewReader(body), headerMap, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	level, err = server.repos.GetAccessLevel(repoId, validPutUser)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	if level.String() != defaultAccess {
+		t.Fatalf("Expected user to be present with access level %q but got %q.\n", defaultAccess, level.String())
+	}
+
 }
