@@ -498,3 +498,58 @@ func Test_patchRepoSettings(t *testing.T) {
 		t.Fatalf("Expected visbility to be %t but was %t\n", anotherPublic, newRepoVis)
 	}
 }
+
+func Test_listRepoCollaborators(t *testing.T) {
+	const method = "GET"
+	const urlTemplate = "/users/%s/repos/%s/collaborators"
+
+	const invalidUser = "iDoNotExist"
+	const invalidRepo = "iDoNotExist"
+	const validUser = "alice"
+	const validRepoEmpty = "auth"
+	const validRepoCollaborator = "openfmri"
+
+	// test request fail for non existing user.
+	url := fmt.Sprintf(urlTemplate, invalidUser, invalidRepo)
+	_, err := RunRequest(method, url, nil, nil, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, non existing repository.
+	url = fmt.Sprintf(urlTemplate, validUser, invalidRepo)
+	_, err = RunRequest(method, url, nil, nil, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	var collaborators []string
+
+	// test existing user, existing repository, repository w/o collaborators.
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoEmpty)
+	resp, err := RunRequest(method, url, nil, nil, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	err = json.Unmarshal(resp.Body.Bytes(), &collaborators)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(collaborators) != 0 {
+		t.Errorf("Expected empty list but got: %v\n", collaborators)
+	}
+
+	// test existing user, existing repository, repository with collaborators.
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator)
+	resp, err = RunRequest(method, url, nil, nil, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	err = json.Unmarshal(resp.Body.Bytes(), &collaborators)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(collaborators) != 1 {
+		t.Errorf("Expected one collaborator but got: %v\n", collaborators)
+	}
+}
