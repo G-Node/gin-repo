@@ -708,3 +708,48 @@ func (s *Server) patchRepoSettings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(respBody)
 }
+
+// listRepoCollaborators returns a JSON array containing all collaborators
+// of the requested repository.
+func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
+	// TODO for now everyone can request this list. Once RepoTokens have been
+	// integrated into the actual RepoAccess check, additional checks should be
+	// integrated, if the repository is private.
+
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	exists, err := s.repos.RepoExists(rid)
+	if err != nil || !exists {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	repoAccess, err := s.repos.ListSharedAccess(rid)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	respBody := []byte("[]")
+	if len(repoAccess) > 0 {
+		users := make([]string, len(repoAccess))
+		i := 0
+		for k := range repoAccess {
+			users[i] = k
+			i++
+		}
+		respBody, err = json.Marshal(users)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respBody)
+}
