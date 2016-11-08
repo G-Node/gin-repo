@@ -20,6 +20,7 @@ func (s *Server) SetupRoutes() {
 	r.HandleFunc("/users/{user}/repos/{repo}/visibility", s.setRepoVisibility).Methods("PUT")
 
 	r.HandleFunc("/users/{user}/repos/{repo}/collaborators", s.listRepoCollaborators).Methods("GET")
+	r.HandleFunc("/users/{user}/repos/{repo}/collaborators/{username}", s.putRepoCollaborator).Methods("PUT")
 
 	r.HandleFunc("/users/{user}/repos/{repo}/branches/{branch}", s.getBranch).Methods("GET")
 	r.HandleFunc("/users/{user}/repos/{repo}/objects/{object}", s.getObject).Methods("GET")
