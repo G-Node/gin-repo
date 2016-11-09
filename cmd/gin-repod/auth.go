@@ -49,5 +49,11 @@ func (s *Server) checkAccess(w http.ResponseWriter, r *http.Request, rid store.R
 		return user, false
 	}
 
+	exists, err := s.repos.RepoExists(rid)
+	if err != nil || !exists {
+		http.Error(w, "Nothing here. Move along.", http.StatusNotFound)
+		return user, false
+	}
+
 	return user, true
 }
