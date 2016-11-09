@@ -95,11 +95,7 @@ func RunRequest(method string, url string, body io.Reader,
 		}
 	}
 
-	resp, err := makeRequest(req, code)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
+	return makeRequest(req, code)
 }
 
 func TestBranchAccess(t *testing.T) {
