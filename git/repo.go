@@ -98,6 +98,13 @@ func (repo *Repository) WriteDescription(description string) error {
 	return ioutil.WriteFile(path, []byte(description), 0666)
 }
 
+// DeleteCollaborator removes a collaborator file from the repositories sharing folder.
+func (repo *Repository) DeleteCollaborator(username string) error {
+	filePath := filepath.Join(repo.Path, "gin", "sharing", username)
+
+	return os.Remove(filePath)
+}
+
 //OpenObject returns the git object for a give id (SHA1).
 func (repo *Repository) OpenObject(id SHA1) (Object, error) {
 	obj, err := repo.openRawObject(id)
