@@ -253,7 +253,7 @@ Options:
 
 	s.Handler = handlers.CORS(
 		handlers.AllowedHeaders([]string{"Authorization", "Content-Type"}),
-		handlers.AllowedMethods([]string{"GET", "PUT", "POST", "DELETE"}),
+		handlers.AllowedMethods([]string{"GET", "PUT", "POST", "DELETE", "PATCH"}),
 	)(s.Handler)
 
 	// this call might never return if there actually was

@@ -301,15 +301,6 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return StatusBadRequest if an error occurs or if the repository does not exist.
-	// Returning StatusNotFound for non existing repositories could lead to inference
-	// of private repositories later on.
-	exists, err := s.repos.RepoExists(rid)
-	if err != nil || !exists {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
 	if !ok {
 		return
@@ -331,15 +322,6 @@ func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
 	rid, err := s.varsToRepoID(ivars)
 
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// Return StatusBadRequest if an error occurs or if the repository does not exist.
-	// Returning StatusNotFound for non existing repositories could lead to inference
-	// of private repositories later on.
-	exists, err := s.repos.RepoExists(rid)
-	if err != nil || !exists {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -629,4 +611,100 @@ func (s *Server) browseRepo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.objectToWire(w, repo, obj)
+}
+
+// patchRepoSettings patches repository description and public status.
+// The request header has to contain an authorization header with a valid token.
+// The request body has to contain valid JSON containing "description" as key
+// and a string as value, "public" as key and a boolean value as value or both.
+// A request that does not contain any of these two keys will result in a BadRequest status.
+func (s *Server) patchRepoSettings(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkAccess(w, r, rid, store.AdminAccess)
+	if !ok {
+		return
+	}
+
+	// Pointer fields are used to make sure, that boolean values are
+	// not updated, when the corresponding field was not
+	// included in the submitted JSON.
+	var patch struct {
+		Description *string `json:"description,omitempty"`
+		Public      *bool   `json:"public,omitempty"`
+	}
+
+	if r.Body == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = json.Unmarshal(b, &patch)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// TODO The following code currently does not deal with the problem
+	// if an error occurs, after part of the patch has already
+	// been applied.
+	responseCode := http.StatusOK
+
+	// The following code deviates from normal style of
+	// return on error, since we always want to return
+	// the latest state if the repository settings,
+	// even if an error occurs.
+	if patch.Description == nil && patch.Public == nil {
+		responseCode = http.StatusBadRequest
+	}
+	repository, err := git.OpenRepository(s.repos.IdToPath(rid))
+	if err != nil {
+		responseCode = http.StatusInternalServerError
+	}
+
+	if patch.Description != nil {
+		err = repository.WriteDescription(*patch.Description)
+		if err != nil {
+			responseCode = http.StatusInternalServerError
+		}
+	}
+
+	if patch.Public != nil {
+		err = s.repos.SetRepoVisibility(rid, *patch.Public)
+		if err != nil {
+			responseCode = http.StatusInternalServerError
+		}
+	}
+
+	var resp struct {
+		Public      bool
+		Description string
+	}
+
+	resp.Description = repository.ReadDescription()
+	resp.Public, err = s.repos.GetRepoVisibility(rid)
+	if err != nil {
+		responseCode = http.StatusInternalServerError
+	}
+
+	respBody, err := json.Marshal(resp)
+	if err != nil {
+		responseCode = http.StatusInternalServerError
+	}
+
+	w.WriteHeader(responseCode)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBody)
 }

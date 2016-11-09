@@ -108,13 +108,16 @@ func (store *RepoStore) gitPath() string {
 	return filepath.Join(store.Path, "git")
 }
 
-func (store *RepoStore) idToPath(id RepoId) string {
+// IdToPath returns the complete path to the root folder of
+// the repository referenced by the RepoId. Method does not
+// check whether the repository actually exists.
+func (store *RepoStore) IdToPath(id RepoId) string {
 	return filepath.Join(store.gitPath(), id.Owner, id.Name+".git")
 }
 
 // RepoExists returns true if the path to a provided RepoId exists, false otherwise.
 func (store *RepoStore) RepoExists(id RepoId) (bool, error) {
-	repoPath := store.idToPath(id)
+	repoPath := store.IdToPath(id)
 	_, err := os.Stat(repoPath)
 
 	if err != nil && os.IsNotExist(err) {
@@ -127,7 +130,7 @@ func (store *RepoStore) RepoExists(id RepoId) (bool, error) {
 }
 
 func (store *RepoStore) CreateRepo(id RepoId) (*git.Repository, error) {
-	path := store.idToPath(id)
+	path := store.IdToPath(id)
 
 	_, err := os.Stat(path)
 
@@ -271,12 +274,12 @@ func (store *RepoStore) ListPublicRepos() ([]RepoId, error) {
 }
 
 func (store *RepoStore) OpenGitRepo(id RepoId) (*git.Repository, error) {
-	path := store.idToPath(id)
+	path := store.IdToPath(id)
 	return git.OpenRepository(path)
 }
 
 func (store *RepoStore) GetRepoVisibility(id RepoId) (bool, error) {
-	base := store.idToPath(id)
+	base := store.IdToPath(id)
 	path := filepath.Join(base, "gin", "public")
 
 	_, err := os.Stat(path)
@@ -302,7 +305,7 @@ func (store *RepoStore) SetRepoVisibility(id RepoId, public bool) error {
 		return nil
 	}
 
-	path := filepath.Join(store.idToPath(id), "gin", "public")
+	path := filepath.Join(store.IdToPath(id), "gin", "public")
 	if public {
 		_, err := os.Create(path)
 		if err != nil {
@@ -320,7 +323,7 @@ func (store *RepoStore) SetAccessLevel(id RepoId, user string, level AccessLevel
 	}
 
 	//TODO: check user name
-	path := filepath.Join(store.idToPath(id), "gin", "sharing", user)
+	path := filepath.Join(store.IdToPath(id), "gin", "sharing", user)
 
 	if level == NoAccess {
 		err := os.Remove(path)
@@ -340,7 +343,7 @@ func (store *RepoStore) readAccessLevel(id RepoId, user string) (AccessLevel, er
 		return NoAccess, nil
 	}
 
-	path := filepath.Join(store.idToPath(id), "gin", "sharing", user)
+	path := filepath.Join(store.IdToPath(id), "gin", "sharing", user)
 
 	data, err := ioutil.ReadFile(path)
 	if os.IsNotExist(err) {
@@ -386,7 +389,7 @@ func (store *RepoStore) GetAccessLevel(id RepoId, user string) (AccessLevel, err
 }
 
 func (store *RepoStore) ListSharedAccess(id RepoId) (map[string]AccessLevel, error) {
-	path := filepath.Join(store.idToPath(id), "gin", "sharing")
+	path := filepath.Join(store.IdToPath(id), "gin", "sharing")
 
 	dir, err := os.Open(path)
 

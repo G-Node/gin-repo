@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -69,7 +70,7 @@ func NewGet(t *testing.T, url string, user string) *http.Request {
 	return req
 }
 
-func makeRequest(t *testing.T, req *http.Request, code int) (*httptest.ResponseRecorder, error) {
+func makeRequest(req *http.Request, code int) (*httptest.ResponseRecorder, error) {
 	rr := httptest.NewRecorder()
 	server.ServeHTTP(rr, req)
 
@@ -80,15 +81,32 @@ func makeRequest(t *testing.T, req *http.Request, code int) (*httptest.ResponseR
 	return rr, nil
 }
 
+func RunRequest(method string, url string, body io.Reader,
+	header map[string]string, code int) (*httptest.ResponseRecorder, error) {
+
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	if header != nil && len(header) > 0 {
+		for k, v := range header {
+			req.Header.Add(k, v)
+		}
+	}
+
+	return makeRequest(req, code)
+}
+
 func TestBranchAccess(t *testing.T) {
 	req := NewGet(t, "/users/alice/repos/exrepo/branches/master", "")
-	_, err := makeRequest(t, req, http.StatusNotFound)
+	_, err := makeRequest(req, http.StatusNotFound)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	req = NewGet(t, "/users/alice/repos/exrepo/branches/master", "alice")
-	_, err = makeRequest(t, req, http.StatusOK)
+	_, err = makeRequest(req, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,13 +132,13 @@ func TestObjectAccess(t *testing.T) {
 	//now make some requests
 	url := fmt.Sprintf("/users/alice/repos/exrepo/objects/%s", id)
 	req := NewGet(t, url, "")
-	_, err = makeRequest(t, req, http.StatusNotFound)
+	_, err = makeRequest(req, http.StatusNotFound)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	req = NewGet(t, url, "alice")
-	_, err = makeRequest(t, req, http.StatusOK)
+	_, err = makeRequest(req, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}

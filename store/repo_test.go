@@ -3,7 +3,9 @@ package store
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/G-Node/gin-repo/internal/testbed"
@@ -160,5 +162,17 @@ func Test_RepoExists(t *testing.T) {
 	}
 	if !exists {
 		t.Fatal("Did not expect false on valid RepoId.")
+	}
+}
+
+func TestRepoStore_IdToPath(t *testing.T) {
+	const repoOwner = "alice"
+	const repoName = "auth"
+
+	r := RepoId{Owner: repoOwner, Name: repoName}
+	path := repos.IdToPath(r)
+
+	if !strings.Contains(path, fmt.Sprintf(filepath.Join("repos", "git", repoOwner, repoName+".git"))) {
+		t.Fatalf("Received unexpected repository path: %q\n", path)
 	}
 }

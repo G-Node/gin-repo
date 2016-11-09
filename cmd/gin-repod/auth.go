@@ -39,13 +39,19 @@ func (s *Server) checkAccess(w http.ResponseWriter, r *http.Request, rid store.R
 	s.log(DEBUG, "U: %s w: %v; h: %v -> %v", uid, want, have, want < have)
 	if want > have {
 
-		if have < store.PullAccess {
+		if have <= store.PullAccess {
 			//TODO: all 404 messages should be the same, otherwise you can infer information
 			// from them
 			http.Error(w, "Nothing here. Move along.", http.StatusNotFound)
 		} else {
 			http.Error(w, "No access", http.StatusForbidden)
 		}
+		return user, false
+	}
+
+	exists, err := s.repos.RepoExists(rid)
+	if err != nil || !exists {
+		http.Error(w, "Nothing here. Move along.", http.StatusNotFound)
 		return user, false
 	}
 
