@@ -839,5 +839,50 @@ func (s *Server) putRepoCollaborator(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteRepoCollaborator(w http.ResponseWriter, r *http.Request) {
+	header := r.Header.Get("Authorization")
+	if header == "" || !strings.HasPrefix(header, "Bearer ") {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	exists, err := s.repos.RepoExists(rid)
+	if err != nil || !exists {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkAccess(w, r, rid, store.AdminAccess)
+	if !ok {
+		return
+	}
+
+	username := ivars["username"]
+	if username == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	repo, err := git.OpenRepository(s.repos.IdToPath(rid))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = repo.DeleteCollaborator(username)
+	if err != nil && os.IsNotExist(err) {
+		w.WriteHeader(http.StatusConflict)
+		return
+	} else if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
