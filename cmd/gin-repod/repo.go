@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
 
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
@@ -294,25 +293,10 @@ func (s *Server) varsToRepoID(vars map[string]string) (store.RepoId, error) {
 }
 
 func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
-	header := r.Header.Get("Authorization")
-	if header == "" || !strings.HasPrefix(header, "Bearer ") {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
 	ivars := mux.Vars(r)
 	rid, err := s.varsToRepoID(ivars)
 
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// Return StatusBadRequest if an error occurs or if the repository does not exist.
-	// Returning StatusNotFound for non existing repositories could lead to inference
-	// of private repositories later on.
-	exists, err := s.repos.RepoExists(rid)
-	if err != nil || !exists {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -334,25 +318,10 @@ func (s *Server) getRepoVisibility(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) setRepoVisibility(w http.ResponseWriter, r *http.Request) {
-	header := r.Header.Get("Authorization")
-	if header == "" || !strings.HasPrefix(header, "Bearer ") {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
 	ivars := mux.Vars(r)
 	rid, err := s.varsToRepoID(ivars)
 
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// Return StatusBadRequest if an error occurs or if the repository does not exist.
-	// Returning StatusNotFound for non existing repositories could lead to inference
-	// of private repositories later on.
-	exists, err := s.repos.RepoExists(rid)
-	if err != nil || !exists {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -650,25 +619,10 @@ func (s *Server) browseRepo(w http.ResponseWriter, r *http.Request) {
 // and a string as value, "public" as key and a boolean value as value or both.
 // A request that does not contain any of these two keys will result in a BadRequest status.
 func (s *Server) patchRepoSettings(w http.ResponseWriter, r *http.Request) {
-	header := r.Header.Get("Authorization")
-	if header == "" || !strings.HasPrefix(header, "Bearer ") {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
 	ivars := mux.Vars(r)
 	rid, err := s.varsToRepoID(ivars)
 
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// Return StatusBadRequest if an error occurs or if the repository does not exist.
-	// Returning StatusNotFound for non existing repositories could lead to inference
-	// of private repositories later on.
-	exists, err := s.repos.RepoExists(rid)
-	if err != nil || !exists {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
