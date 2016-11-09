@@ -3,14 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
-	"os"
-	"path/filepath"
 )
 
 const repoUser = "alice"
@@ -618,6 +619,8 @@ func Test_putRepoCollaborator(t *testing.T) {
 		t.Fatalf("%v\n", err)
 	}
 
+	// TODO rest request fail for non admin-access user
+
 	// TODO test request fail for existing user, existing repository, invalid collaborator.
 
 	// test request fail for existing user, existing repository, own user as collaborator.
@@ -705,5 +708,117 @@ func Test_putRepoCollaborator(t *testing.T) {
 	if level.String() != defaultAccess {
 		t.Fatalf("Expected user to be present with access level %q but got %q.\n", defaultAccess, level.String())
 	}
+}
 
+func Test_deleteRepoCollaborator(t *testing.T) {
+	const method = "DELETE"
+	const urlTemplate = "/users/%s/repos/%s/collaborators/%s"
+
+	const invalidUser = "iDoNotExist"
+	const invalidRepo = "iDoNotExist"
+	const validUser = "alice"
+
+	const validRepoCollaborator = "openfmri"
+	const validRepoEmpty = "auth"
+
+	const invalidDeleteUser = "iDoNotExist"
+	const validDeleteUser = "bob"
+
+	headerMap := make(map[string]string)
+
+	token, err := server.users.TokenForUser(validUser)
+	if err != nil {
+		t.Fatalf("Could not make token for %q: %v, %v", validUser, token, err)
+	}
+
+	// test request fail for missing authorization header.
+	url := fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidDeleteUser)
+	_, err = RunRequest(method, url, nil, nil, http.StatusForbidden)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for missing bearer token in authorization header.
+	headerMap["Authorization"] = ""
+	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidDeleteUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusForbidden)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for non existing user.
+	headerMap["Authorization"] = "Bearer "
+	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidDeleteUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, non existing repository.
+	headerMap["Authorization"] = "Bearer "
+	url = fmt.Sprintf(urlTemplate, validUser, invalidRepo, invalidDeleteUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, existing repository w/o proper authorization.
+	headerMap["Authorization"] = "Bearer "
+	url = fmt.Sprintf(urlTemplate, validUser, invalidRepo, invalidDeleteUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, existing repository, with authorization, empty sharing folder.
+	headerMap["Authorization"] = "Bearer " + token
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoEmpty, invalidDeleteUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusConflict)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for existing user, existing repository, with authorization, invalid delete username.
+	headerMap["Authorization"] = "Bearer " + token
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, invalidDeleteUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusConflict)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test valid request for existing user, existing repository, with authorization, valid delete username.
+	repoId := store.RepoId{Owner: validUser, Name: validRepoCollaborator}
+	oldShared, err := server.repos.ListSharedAccess(repoId)
+	headerMap["Authorization"] = "Bearer " + token
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validDeleteUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	// TODO maybe there is a better way to ensure a clean test environment for other tests
+	defer func() {
+		filePath := filepath.Join(server.repos.IdToPath(repoId), "gin", "sharing", validDeleteUser)
+		err := ioutil.WriteFile(filePath, []byte("is-admin"), 0664)
+		if err != nil {
+			fmt.Printf("Test cleanup error for repo %q : %v\n", filePath, err)
+		}
+	}()
+
+	newShared, err := server.repos.ListSharedAccess(repoId)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	if len(newShared) != len(oldShared)-1 {
+		t.Fatalf("Expected %d collaborators but got %d, list of collaborators: %v\n",
+			len(newShared), len(oldShared), newShared)
+	}
+	_, exists := newShared[validDeleteUser]
+	if exists {
+		t.Fatalf("Collaborator %q was not deleted from shared folder of repo %q\n",
+			validDeleteUser, validRepoCollaborator)
+	}
+
+	// TODO test fail due to not repo owner and insufficient repo access level
+
+	// TODO test correct delete when not repo owner but with admin-rights
 }
