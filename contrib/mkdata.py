@@ -81,10 +81,11 @@ def create_repo(user, repo):
     if repo.get("public", False):
         target = os.path.join(gindir, "public")
         open(target, "w")
+    # always create sharing folder even if empty
+    sharing = os.path.join(gindir, "sharing")
+    os.mkdir(sharing)
     shared = repo.get("shared") or {}
     for buddy, level in shared.items():
-        sharing = os.path.join(gindir, "sharing")
-        os.mkdir(sharing)
         target = os.path.join(sharing, buddy)
         with open(target, "w") as fd:
             fd.write(level)

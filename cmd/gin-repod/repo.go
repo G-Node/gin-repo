@@ -708,3 +708,154 @@ func (s *Server) patchRepoSettings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(respBody)
 }
+
+// listRepoCollaborators returns a JSON array containing all collaborators
+// of the requested repository.
+func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+	if !ok {
+		return
+	}
+
+	repoAccess, err := s.repos.ListSharedAccess(rid)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	respBody := []byte("[]")
+	if len(repoAccess) > 0 {
+		users := make([]string, len(repoAccess))
+		i := 0
+		for k := range repoAccess {
+			users[i] = k
+			i++
+		}
+		respBody, err = json.Marshal(users)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respBody)
+}
+
+// putRepoCollaborator adds a user with the submitted access level to the sharing folder
+// of a repository. If the user already exists, an http.StatusConflict is returned.
+func (s *Server) putRepoCollaborator(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkAccess(w, r, rid, store.AdminAccess)
+	if !ok {
+		return
+	}
+
+	username := ivars["username"]
+	if username == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// TODO check if provided username actually exists in the user store (local and auth).
+
+	if rid.Owner == username {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	repoAccess, err := s.repos.ListSharedAccess(rid)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if _, exists := repoAccess[username]; exists {
+		// TODO return error message along the lines "already exists".
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
+	var accessLevel struct{ Permission string }
+
+	if r.Body == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = json.Unmarshal(b, &accessLevel)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	level, err := store.ParseAccessLevel(accessLevel.Permission)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = s.repos.SetAccessLevel(rid, username, level)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// deleteRepoCollaborator removes a user from the sharing folder of a repository.
+// If the user is not found within the folder, an http.StatusConflict is returned.
+func (s *Server) deleteRepoCollaborator(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkAccess(w, r, rid, store.AdminAccess)
+	if !ok {
+		return
+	}
+
+	username := ivars["username"]
+	if username == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	repo, err := git.OpenRepository(s.repos.IdToPath(rid))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = repo.DeleteCollaborator(username)
+	if err != nil && os.IsNotExist(err) {
+		w.WriteHeader(http.StatusConflict)
+		return
+	} else if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
