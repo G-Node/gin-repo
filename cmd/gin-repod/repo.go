@@ -712,10 +712,6 @@ func (s *Server) patchRepoSettings(w http.ResponseWriter, r *http.Request) {
 // listRepoCollaborators returns a JSON array containing all collaborators
 // of the requested repository.
 func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
-	// TODO for now everyone can request this list. Once RepoTokens have been
-	// integrated into the actual RepoAccess check, additional checks should be
-	// integrated, if the repository is private.
-
 	ivars := mux.Vars(r)
 	rid, err := s.varsToRepoID(ivars)
 	if err != nil {
@@ -723,9 +719,8 @@ func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists, err := s.repos.RepoExists(rid)
-	if err != nil || !exists {
-		w.WriteHeader(http.StatusBadRequest)
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+	if !ok {
 		return
 	}
 
@@ -757,21 +752,9 @@ func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
 // putRepoCollaborator adds a user with the submitted access level to the sharing folder
 // of a repository. If the user already exists, an http.StatusConflict is returned.
 func (s *Server) putRepoCollaborator(w http.ResponseWriter, r *http.Request) {
-	header := r.Header.Get("Authorization")
-	if header == "" || !strings.HasPrefix(header, "Bearer ") {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
 	ivars := mux.Vars(r)
 	rid, err := s.varsToRepoID(ivars)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	exists, err := s.repos.RepoExists(rid)
-	if err != nil || !exists {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -838,22 +821,12 @@ func (s *Server) putRepoCollaborator(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// deleteRepoCollaborator removes a user from the sharing folder of a repository.
+// If the user is not found within the folder, an http.StatusConflict is returned.
 func (s *Server) deleteRepoCollaborator(w http.ResponseWriter, r *http.Request) {
-	header := r.Header.Get("Authorization")
-	if header == "" || !strings.HasPrefix(header, "Bearer ") {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
 	ivars := mux.Vars(r)
 	rid, err := s.varsToRepoID(ivars)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	exists, err := s.repos.RepoExists(rid)
-	if err != nil || !exists {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

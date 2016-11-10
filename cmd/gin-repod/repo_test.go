@@ -512,16 +512,16 @@ func Test_listRepoCollaborators(t *testing.T) {
 	const validRepoEmpty = "auth"
 	const validRepoCollaborator = "openfmri"
 
-	// test request fail for non existing user.
+	// test request fail for invalid user.
 	url := fmt.Sprintf(urlTemplate, invalidUser, invalidRepo)
-	_, err := RunRequest(method, url, nil, nil, http.StatusBadRequest)
+	_, err := RunRequest(method, url, nil, nil, http.StatusNotFound)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
 
-	// test request fail for existing user, non existing repository.
-	url = fmt.Sprintf(urlTemplate, validUser, invalidRepo)
-	_, err = RunRequest(method, url, nil, nil, http.StatusBadRequest)
+	// test request fail for valid user, invalid repository.
+	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo)
+	_, err = RunRequest(method, url, nil, nil, http.StatusNotFound)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
@@ -555,6 +555,8 @@ func Test_listRepoCollaborators(t *testing.T) {
 	if len(collaborators) != 1 {
 		t.Errorf("Expected one collaborator but got: %v\n", collaborators)
 	}
+
+	// TODO add tests for private repository and tests for non owner
 }
 
 func Test_putRepoCollaborator(t *testing.T) {
@@ -582,39 +584,39 @@ func Test_putRepoCollaborator(t *testing.T) {
 
 	// test request fail for missing authorization header.
 	url := fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidPutUser)
-	_, err = RunRequest(method, url, nil, nil, http.StatusForbidden)
+	_, err = RunRequest(method, url, nil, nil, http.StatusNotFound)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
 
-	// test request fail for missing bearer token in authorization header.
+	// test request fail for missing bearer token prefix in authorization header.
 	headerMap["Authorization"] = ""
 	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidPutUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusNotFound)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for missing bearer token.
+	headerMap["Authorization"] = "Bearer "
+	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, validPutUser)
 	_, err = RunRequest(method, url, nil, headerMap, http.StatusForbidden)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
 
-	// test request fail for non existing user.
-	headerMap["Authorization"] = "Bearer "
+	// test request fail for non existing user, with authorization.
+	headerMap["Authorization"] = "Bearer " + token
 	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, validPutUser)
-	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusNotFound)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
 
-	// test request fail for existing user, non existing repository.
-	headerMap["Authorization"] = "Bearer "
+	// test request fail for existing user, non existing repository, with authorization.
+	headerMap["Authorization"] = "Bearer " + token
 	url = fmt.Sprintf(urlTemplate, validUser, invalidRepo, validPutUser)
-	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
-	if err != nil {
-		t.Fatalf("%v\n", err)
-	}
-
-	// test request fail for existing user, existing repository w/o proper authorization.
-	headerMap["Authorization"] = "Bearer "
-	url = fmt.Sprintf(urlTemplate, validUser, invalidRepo, validPutUser)
-	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusNotFound)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
@@ -733,39 +735,39 @@ func Test_deleteRepoCollaborator(t *testing.T) {
 
 	// test request fail for missing authorization header.
 	url := fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidDeleteUser)
-	_, err = RunRequest(method, url, nil, nil, http.StatusForbidden)
+	_, err = RunRequest(method, url, nil, nil, http.StatusNotFound)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for missing bearer token header in authorization header.
+	headerMap["Authorization"] = ""
+	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidDeleteUser)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusNotFound)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
 
 	// test request fail for missing bearer token in authorization header.
-	headerMap["Authorization"] = ""
+	headerMap["Authorization"] = "Bearer "
 	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidDeleteUser)
 	_, err = RunRequest(method, url, nil, headerMap, http.StatusForbidden)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
 
-	// test request fail for non existing user.
-	headerMap["Authorization"] = "Bearer "
+	// test request fail for non existing user, with authorization.
+	headerMap["Authorization"] = "Bearer " + token
 	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo, invalidDeleteUser)
-	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusNotFound)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
 
-	// test request fail for existing user, non existing repository.
-	headerMap["Authorization"] = "Bearer "
+	// test request fail for existing user, non existing repository, with authorization.
+	headerMap["Authorization"] = "Bearer " + token
 	url = fmt.Sprintf(urlTemplate, validUser, invalidRepo, invalidDeleteUser)
-	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
-	if err != nil {
-		t.Fatalf("%v\n", err)
-	}
-
-	// test request fail for existing user, existing repository w/o proper authorization.
-	headerMap["Authorization"] = "Bearer "
-	url = fmt.Sprintf(urlTemplate, validUser, invalidRepo, invalidDeleteUser)
-	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusNotFound)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
