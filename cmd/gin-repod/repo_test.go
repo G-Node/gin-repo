@@ -12,6 +12,7 @@ import (
 
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
+	"github.com/G-Node/gin-repo/wire"
 )
 
 const repoUser = "alice"
@@ -823,4 +824,60 @@ func Test_deleteRepoCollaborator(t *testing.T) {
 	// TODO test fail due to not repo owner and insufficient repo access level
 
 	// TODO test correct delete when not repo owner but with admin-rights
+}
+
+func Test_repoDescription(t *testing.T) {
+	const method = "GET"
+	const urlTemplate = "/users/%s/repos/%s"
+
+	const invalidUser = "iDoNotExist"
+	const invalidRepo = "iDoNotExist"
+	const validUser = "alice"
+	const validRepo = "auth"
+
+	// test request fail for invalid user.
+	url := fmt.Sprintf(urlTemplate, invalidUser, invalidRepo)
+	_, err := RunRequest(method, url, nil, nil, http.StatusNotFound)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for valid user, invalid repository.
+	url = fmt.Sprintf(urlTemplate, invalidUser, invalidRepo)
+	_, err = RunRequest(method, url, nil, nil, http.StatusNotFound)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test valid user, valid repository
+	url = fmt.Sprintf(urlTemplate, validUser, validRepo)
+	resp, err := RunRequest(method, url, nil, nil, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	result := wire.Repo{}
+	err = json.Unmarshal(resp.Body.Bytes(), &result)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	if result.Owner != validUser {
+		t.Fatalf("Expected owner %q but got %q\n", validUser, result.Owner)
+	}
+	if result.Name != validRepo {
+		t.Fatalf("Expected repository %q but got %q\n", validRepo, result.Name)
+	}
+	if result.Description == "" {
+		t.Fatal("Received empty repository description")
+	}
+	vis, err := server.repos.GetRepoVisibility(store.RepoId{Owner: validUser, Name: validRepo})
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	if result.Public != vis {
+		t.Fatalf("Expected visibility %t but got %t\n", vis, result.Public)
+	}
+
+	// TODO add tests for private repository and tests for non owner
 }

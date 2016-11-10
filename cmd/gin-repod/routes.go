@@ -14,6 +14,8 @@ func (s *Server) SetupRoutes() {
 	r.HandleFunc("/users/{user}/repos", s.createRepo).Methods("POST")
 	r.HandleFunc("/users/{user}/repos", s.listRepos).Methods("GET")
 
+	r.HandleFunc("/users/{user}/repos/{repo}", s.repoDescription).Methods("GET")
+
 	r.HandleFunc("/users/{user}/repos/{repo}/settings", s.patchRepoSettings).Methods("PATCH")
 
 	r.HandleFunc("/users/{user}/repos/{repo}/visibility", s.getRepoVisibility).Methods("GET")

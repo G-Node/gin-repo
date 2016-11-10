@@ -859,3 +859,40 @@ func (s *Server) deleteRepoCollaborator(w http.ResponseWriter, r *http.Request) 
 
 	w.WriteHeader(http.StatusOK)
 }
+
+// repoDescription returns the repositories description. If the client does not
+// provide at least pull access an http.StatusNotFound is returned.
+func (s *Server) repoDescription(w http.ResponseWriter, r *http.Request) {
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+	if !ok {
+		return
+	}
+
+	repo, err := s.repos.OpenGitRepo(rid)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	desc, err := s.repoToWire(rid, repo)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	body, err := json.Marshal(desc)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(body)
+}
