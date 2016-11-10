@@ -859,3 +859,10 @@ func (s *Server) deleteRepoCollaborator(w http.ResponseWriter, r *http.Request) 
 
 	w.WriteHeader(http.StatusOK)
 }
+
+// repoDescription returns
+func (s *Server) repoDescription(w http.ResponseWriter, r * http.Request) {
+	// TODO implement
+
+	w.WriteHeader(http.StatusOK)
+}
