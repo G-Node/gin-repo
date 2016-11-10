@@ -54,7 +54,7 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 
 	rid := store.RepoId{Owner: owner, Name: creat.Name}
 
-	_, ok := s.checkAccess(w, r, rid, store.OwnerAccess)
+	_, ok := s.checkAccess(w, r, rid, store.NoAccess)
 	if !ok {
 		return
 	}
