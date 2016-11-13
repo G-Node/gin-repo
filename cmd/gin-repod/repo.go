@@ -41,7 +41,7 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if creat.Name == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(os.Stderr, "Error precessing request: name missing")
+		fmt.Fprint(os.Stderr, "Error precessing request: name missing")
 		return
 	} else if !checkName(creat.Name) {
 		http.Error(w, "Invalid repository name", http.StatusBadRequest)
@@ -54,8 +54,15 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 
 	rid := store.RepoId{Owner: owner, Name: creat.Name}
 
-	_, ok := s.checkAccess(w, r, rid, store.NoAccess)
+	user, ok := s.checkAccess(w, r, rid, store.NoAccess)
 	if !ok {
+		return
+	}
+	// make sure routes user and token user are identical
+	if owner != user.Uid {
+		http.Error(w, "Invalid repository owner name", http.StatusBadRequest)
+		fmt.Fprintf(os.Stderr,
+			"Error processing request: repository owner (%s) and token owner (%s) do not match", owner, user.Uid)
 		return
 	}
 
