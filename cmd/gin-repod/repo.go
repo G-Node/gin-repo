@@ -58,6 +58,12 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// user nil is only returned if no authentication header is provided.
+	// In any other failed case the function will end the request before.
+	if user == nil {
+		http.Error(w, "Authentication missing", http.StatusBadRequest)
+		return
+	}
 	// make sure routes user and token user are identical
 	if owner != user.Uid {
 		http.Error(w, "Invalid repository owner name", http.StatusBadRequest)
