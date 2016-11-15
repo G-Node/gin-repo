@@ -73,9 +73,7 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	repo, err := s.repos.CreateRepo(rid)
-
 	if err != nil {
-
 		if os.IsExist(err) {
 			w.WriteHeader(http.StatusConflict)
 		} else {
@@ -85,20 +83,28 @@ func (s *Server) createRepo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ignore error, because we created the repo
-	//  which is more important
-	repo.WriteDescription(creat.Description)
+	// Repo has been created. If errors occur during writing the description
+	// or setting the visibility print the message to the command line but
+	// continue.
+	err = repo.WriteDescription(creat.Description)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing repository description: %v", err)
+	}
 
-	wr := wire.Repo{Name: creat.Name, Description: repo.ReadDescription()}
+	err = s.repos.SetRepoVisibility(rid, creat.Public)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error setting repository visibility: %v", err)
+	}
+
+	wr := wire.Repo{Name: creat.Name, Description: repo.ReadDescription(), Public: creat.Public}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
 	js := json.NewEncoder(w)
 	err = js.Encode(wr)
-
 	if err != nil {
-		log.Printf("Error while encoding, status already sent. oh oh.")
+		log.Printf("Error while encoding, status already sent. oh oh... %v\n", err)
 	}
 }
 
