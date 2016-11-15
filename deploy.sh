@@ -1,4 +1,6 @@
 #!/bin/bash
+
+# run this script as normal user w/o sudo from within the gin-repo root folder.
 set -e
 
 CNOC="\033[0m"
