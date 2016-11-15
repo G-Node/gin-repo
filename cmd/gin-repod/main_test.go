@@ -89,7 +89,7 @@ func RunRequest(method string, url string, body io.Reader,
 		return nil, err
 	}
 
-	if header != nil && len(header) > 0 {
+	if len(header) > 0 {
 		for k, v := range header {
 			req.Header.Add(k, v)
 		}
