@@ -297,7 +297,7 @@ func (s *Server) varsToRepoID(vars map[string]string) (store.RepoId, error) {
 	iuser := vars["user"]
 	irepo := vars["repo"]
 
-	repoId := store.RepoId{iuser, irepo}
+	repoId := store.RepoId{Owner: iuser, Name: irepo}
 	if iuser == "" || irepo == "" {
 		return repoId, errors.New("Missing arguments.")
 	}
