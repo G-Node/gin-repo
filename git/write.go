@@ -192,6 +192,14 @@ func (t *Tag) WriteTo(writer io.Writer) (int64, error) {
 	if err != nil {
 		return n, err
 	}
+	if t.GPGSig != "" {
+		x, err = w.WriteString(fmt.Sprintf("%s\n", t.GPGSig))
+		n += int64(x)
+		if err != nil {
+			return n, err
+		}
+
+	}
 
 	err = w.Flush()
 	return n, err

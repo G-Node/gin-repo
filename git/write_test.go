@@ -138,7 +138,6 @@ func TestWriteBlob(t *testing.T) {
 
 func TestWriteTag(t *testing.T) {
 	tobj, _ := ParseSHA1("cd119b179d4be4629d8a2e605a8386a7b6fc2afa")
-
 	tagger := Signature{
 		Name:   "gin repo",
 		Email:  "gin-repo@g-node.org",
@@ -171,6 +170,23 @@ func TestWriteTag(t *testing.T) {
 
 	x := fmt.Sprintf("%x", h.Sum(nil))
 	y := "84c011b574ae42832efab99acb782f5d716f5097"
+
+	if x != y {
+		t.Logf("[E] tag object proof:\n%s\n", b.String())
+		t.Fatalf("sha1(tag) => %q expected %q", x, y)
+	}
+
+	// Test write of signed tags
+	h.Reset()
+	b.Reset()
+	// the FakeSignedTag is defined in parse_test.go, its reused here
+	_, err = FakeSignedTag.WriteTo(mw)
+	if err != nil {
+		t.Fatalf("SignedTag.WriteTo() => %v ", err)
+	}
+
+	x = fmt.Sprintf("%x", h.Sum(nil))
+	y = "15cbbc60199eae13e3cd0561bf236bf21f0dddeb"
 
 	if x != y {
 		t.Logf("[E] tag object proof:\n%s\n", b.String())
