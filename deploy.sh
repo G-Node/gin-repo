@@ -13,7 +13,7 @@ GOPATH=/opt/deploy/go
 echo -e "Running in ${CAOK}$PWD $CNOC"
 REPO=$(basename $PWD)
 if [ "$REPO" != "gin-repo" ]; then
-    echo -e "${CERR}* Not in gin-repo *{CNOC}"
+    echo -e "${CERR}* Not in gin-repo *${CNOC}"
     exit 1
 fi
 
