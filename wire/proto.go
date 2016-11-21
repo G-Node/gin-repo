@@ -13,6 +13,7 @@ type RepoAccessInfo struct {
 type CreateRepo struct {
 	Name        string
 	Description string
+	Public      bool
 }
 
 type Repo struct {
