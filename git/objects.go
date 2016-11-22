@@ -76,7 +76,7 @@ func ParseObjectType(s string) (ObjectType, error) {
 	case "blob":
 		return ObjBlob, nil
 	case "tag":
-		return ObjBlob, nil
+		return ObjTag, nil
 	}
 
 	return ObjectType(0), fmt.Errorf("git: unknown object: %q", s)
