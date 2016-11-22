@@ -1,4 +1,6 @@
 #!/bin/bash
+
+# run this script as normal user w/o sudo from within the gin-repo root folder.
 set -e
 
 CNOC="\033[0m"
@@ -8,10 +10,12 @@ CWRN="\033[33;01m"
 
 GOPATH=/opt/deploy/go
 
+sudo -v -p "Certain commands require sudo access. Please enter your password: "
+
 echo -e "Running in ${CAOK}$PWD $CNOC"
 REPO=$(basename $PWD)
 if [ "$REPO" != "gin-repo" ]; then
-    echo -e "${CERR}* Not in gin-repo *{CNOC}"
+    echo -e "${CERR}* Not in gin-repo *${CNOC}"
     exit 1
 fi
 

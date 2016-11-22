@@ -13,4 +13,4 @@ do
     fi
   fi
 done
-
+rm tmp.out;

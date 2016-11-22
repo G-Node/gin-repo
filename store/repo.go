@@ -206,7 +206,7 @@ func (store *RepoStore) ListReposForUser(uid string) ([]RepoId, error) {
 		return nil, fmt.Errorf("%q is not a directory as expected", userpath)
 	}
 
-	names, err := filepath.Glob(filepath.Join(userpath, "*.git"))
+	names, _ := filepath.Glob(filepath.Join(userpath, "*.git"))
 
 	var repos []RepoId
 	for _, path := range names {

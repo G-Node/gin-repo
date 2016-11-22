@@ -182,6 +182,10 @@ func (s *Server) SetupStores() {
 	}
 
 	repos, err := s.repos.ListRepos()
+	if err != nil {
+		s.log(PANIC, "Could not read repo store: %v", err)
+		os.Exit(13)
+	}
 
 	s.log(DEBUG, "repos detected:")
 	for _, repo := range repos {
@@ -196,7 +200,7 @@ func (s *Server) SetupStores() {
 		access, err := s.repos.ListSharedAccess(repo)
 
 		if err != nil {
-
+			s.log(WARN, " - shared access error: %v", err)
 		} else if len(access) > 0 {
 			s.log(DEBUG, " - sharing:")
 			for k, v := range access {
