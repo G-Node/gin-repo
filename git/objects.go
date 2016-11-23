@@ -225,4 +225,5 @@ type Tag struct {
 	Tag     string
 	Tagger  Signature
 	Message string
+	GPGSig  string
 }

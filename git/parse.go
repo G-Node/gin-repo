@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+
 	"os"
 	"strconv"
 	"strings"
@@ -61,7 +62,7 @@ func parseSignature(line string) (Signature, error) {
 	return u, nil
 }
 
-func parseGPGSig(r *bufio.Reader, w *bytes.Buffer) error {
+func parseCommitGPGSig(r *bufio.Reader, w *bytes.Buffer) error {
 	for {
 		l, err := r.ReadString('\n')
 		if err != nil {
@@ -77,6 +78,25 @@ func parseGPGSig(r *bufio.Reader, w *bytes.Buffer) error {
 		}
 
 		return fmt.Errorf("Unexpected end of gpg signature")
+	}
+}
+
+func parseTagGPGSig(r *bufio.Reader, w *bytes.Buffer) error {
+	//!Tag signatures do not have trailing whitespaces
+	for {
+		l, err := r.ReadString('\n')
+		if err != nil {
+			return nil
+		}
+		_, err = w.WriteString(fmt.Sprintf("\n%s", strings.Trim(l, " \n")))
+		if err != nil {
+			return err
+		}
+		if !strings.Contains(l, "-----END PGP SIGNATURE-----") {
+			continue
+		} else {
+			return nil
+		}
 	}
 }
 
@@ -164,7 +184,7 @@ func parseCommit(obj gitObject) (*Commit, error) {
 			c.Committer, err = parseSignature(strings.Trim(tail, "\n"))
 		case "gpgsig":
 			sw := bytes.NewBufferString(strings.Trim(tail, "\n"))
-			err = parseGPGSig(br, sw)
+			err = parseCommitGPGSig(br, sw)
 			c.GPGSig = sw.String()
 		}
 
@@ -242,6 +262,7 @@ func parseTag(obj gitObject) (*Tag, error) {
 
 	lr := &io.LimitedReader{R: c.source, N: c.size}
 	br := bufio.NewReader(lr)
+	var mess bytes.Buffer
 
 	var err error
 	for {
@@ -258,23 +279,37 @@ func parseTag(obj gitObject) (*Tag, error) {
 			c.Tag = strings.Trim(tail, "\n")
 		case "tagger":
 			c.Tagger, err = parseSignature(strings.Trim(tail, "\n"))
+		case "-----BEGIN":
+			//with signed tags (in difference to signed commits) the
+			// signatures do not start with "gpgsig" but just with
+			//"-----BEGIN PGP SIGNATURE-----"
+			//(tbd)
+			sw := bytes.NewBufferString(strings.Trim(
+				fmt.Sprintf("%s %s", head, tail),
+				"\n"))
+			err = parseTagGPGSig(br, sw)
+			c.GPGSig = sw.String()
+		default:
+			//Capture descriptions for tags here.The old way works for unsigned
+			//tags but not for signed ones.
+			// Be Aware! The message comes before the gpg signature
+			// not after as with commits
+			mess.WriteString(l)
 		}
 
-		if err != nil || head == "\n" {
+		if err != nil {
+			//For tags gpg signatures can come after the tag description
+			// which might start and also contain a single newline.
+			// therefore the ||head=="\n" part
+			// has been removed. i guess this wont break anything as err will
+			// eventually become EOF for tags and hence the loop will break
+			// (tbd)
 			break
 		}
 	}
-
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
-
-	data, err := ioutil.ReadAll(br)
-
-	if err != nil {
-		return nil, err
-	}
-
-	c.Message = string(data)
+	c.Message = mess.String()[1:]
 	return c, nil
 }
