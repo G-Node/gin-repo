@@ -574,7 +574,8 @@ func Test_putRepoCollaborator(t *testing.T) {
 	const invalidPutUser = "iDoNotExist"
 	const validPutUserAdditional = "gicmo"
 	const validPutUser = "bob"
-	const defaultAccess = "can-push"
+	const defaultAccess = "can-pull"
+	const putAccess = "can-push"
 
 	headerMap := make(map[string]string)
 
@@ -630,14 +631,6 @@ func Test_putRepoCollaborator(t *testing.T) {
 	headerMap["Authorization"] = "Bearer " + token
 	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validUser)
 	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
-	if err != nil {
-		t.Fatalf("%v\n", err)
-	}
-
-	// test request fail for existing user, existing repository, already registered existing collaborator.
-	headerMap["Authorization"] = "Bearer " + token
-	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validPutUser)
-	_, err = RunRequest(method, url, nil, headerMap, http.StatusConflict)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
@@ -710,6 +703,25 @@ func Test_putRepoCollaborator(t *testing.T) {
 	}
 	if level.String() != defaultAccess {
 		t.Fatalf("Expected user to be present with access level %q but got %q.\n", defaultAccess, level.String())
+	}
+
+	// test valid request for existing user, existing repository, update existing collaborator access level.
+	repoId = store.RepoId{Owner: validUser, Name: validRepoEmpty}
+
+	headerMap["Authorization"] = "Bearer " + token
+	headerMap["Content-Type"] = "application/json"
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoEmpty, validPutUser)
+	body = fmt.Sprintf(`{"permission": %q}`, putAccess)
+	_, err = RunRequest(method, url, strings.NewReader(body), headerMap, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	level, err = server.repos.GetAccessLevel(repoId, validPutUser)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	if level.String() != putAccess {
+		t.Fatalf("Expected user to be present with access level %q but got %q.\n", putAccess, level.String())
 	}
 }
 
