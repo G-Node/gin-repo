@@ -504,6 +504,11 @@ func Test_patchRepoSettings(t *testing.T) {
 }
 
 func Test_listRepoCollaborators(t *testing.T) {
+	type collaborator struct {
+		User        string `json:"User"`
+		AccessLevel string `json:"AccessLevel"`
+	}
+
 	const method = "GET"
 	const urlTemplate = "/users/%s/repos/%s/collaborators"
 
@@ -527,20 +532,20 @@ func Test_listRepoCollaborators(t *testing.T) {
 		t.Fatalf("%v\n", err)
 	}
 
-	var collaborators []string
-
 	// test existing user, existing repository, repository w/o collaborators.
+	var repoCollaborators []collaborator
+
 	url = fmt.Sprintf(urlTemplate, validUser, validRepoEmpty)
 	resp, err := RunRequest(method, url, nil, nil, http.StatusOK)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
-	err = json.Unmarshal(resp.Body.Bytes(), &collaborators)
+	err = json.Unmarshal(resp.Body.Bytes(), &repoCollaborators)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(collaborators) != 0 {
-		t.Errorf("Expected empty list but got: %v\n", collaborators)
+	if len(repoCollaborators) != 0 {
+		t.Errorf("Expected empty list but got: %v\n", repoCollaborators)
 	}
 
 	// test existing user, existing repository, repository with collaborators.
@@ -549,12 +554,12 @@ func Test_listRepoCollaborators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
-	err = json.Unmarshal(resp.Body.Bytes(), &collaborators)
+	err = json.Unmarshal(resp.Body.Bytes(), &repoCollaborators)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(collaborators) != 1 {
-		t.Errorf("Expected one collaborator but got: %v\n", collaborators)
+	if len(repoCollaborators) != 1 {
+		t.Errorf("Expected one collaborator but got: %v\n", repoCollaborators)
 	}
 
 	// TODO add tests for private repository and tests for non owner
