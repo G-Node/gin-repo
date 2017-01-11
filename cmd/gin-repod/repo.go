@@ -749,19 +749,21 @@ func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	type collaborator struct {
+		User        string `json:"User"`
+		AccessLevel string `json:"AccessLevel"`
+	}
+
 	respBody := []byte("[]")
 	if len(repoAccess) > 0 {
-		users := make([]string, len(repoAccess))
+		repoCollaborators := make([]collaborator, len(repoAccess))
 		i := 0
-		for k := range repoAccess {
-			users[i] = k
+		for v := range repoAccess {
+			repoCollaborators[i].User = v
+			repoCollaborators[i].AccessLevel = repoAccess[v].String()
 			i++
 		}
-		respBody, err = json.Marshal(users)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		respBody, err = json.Marshal(repoCollaborators)
 	}
 
 	w.WriteHeader(http.StatusOK)
