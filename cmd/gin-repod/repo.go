@@ -827,7 +827,13 @@ func (s *Server) putRepoCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// jquery 1.9+ ajax calls require a proper JSON response body, otherwise they will default to error.
+	returnBody, _ := json.Marshal(struct {
+		Response string `json:"Response"`
+	}{"Success"})
+
 	w.WriteHeader(http.StatusOK)
+	w.Write(returnBody)
 }
 
 // deleteRepoCollaborator removes a user from the sharing folder of a repository.
