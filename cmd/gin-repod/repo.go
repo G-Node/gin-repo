@@ -749,15 +749,21 @@ func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	type collaborator struct {
+		User        string
+		AccessLevel store.AccessLevel
+	}
+
 	respBody := []byte("[]")
 	if len(repoAccess) > 0 {
-		users := make([]string, len(repoAccess))
+		repoCollaborators := make([]collaborator, len(repoAccess))
 		i := 0
-		for k := range repoAccess {
-			users[i] = k
+		for v := range repoAccess {
+			repoCollaborators[i].User = v
+			repoCollaborators[i].AccessLevel = repoAccess[v]
 			i++
 		}
-		respBody, err = json.Marshal(users)
+		respBody, err = json.Marshal(repoCollaborators)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -769,7 +775,7 @@ func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
 }
 
 // putRepoCollaborator adds a user with the submitted access level to the sharing folder
-// of a repository. If the user already exists, an http.StatusConflict is returned.
+// of a repository. If the user already exists, the access level of this user is updated.
 func (s *Server) putRepoCollaborator(w http.ResponseWriter, r *http.Request) {
 	ivars := mux.Vars(r)
 	rid, err := s.varsToRepoID(ivars)
@@ -793,18 +799,6 @@ func (s *Server) putRepoCollaborator(w http.ResponseWriter, r *http.Request) {
 
 	if rid.Owner == username {
 		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	repoAccess, err := s.repos.ListSharedAccess(rid)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if _, exists := repoAccess[username]; exists {
-		// TODO return error message along the lines "already exists".
-		w.WriteHeader(http.StatusConflict)
 		return
 	}
 
@@ -838,6 +832,8 @@ func (s *Server) putRepoCollaborator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+	// jquery 1.9+ ajax calls require a proper JSON response body, otherwise they will default to error.
+	io.WriteString(w, `{"Response": "Success"}`)
 }
 
 // deleteRepoCollaborator removes a user from the sharing folder of a repository.

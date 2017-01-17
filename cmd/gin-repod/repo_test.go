@@ -504,6 +504,11 @@ func Test_patchRepoSettings(t *testing.T) {
 }
 
 func Test_listRepoCollaborators(t *testing.T) {
+	type collaborator struct {
+		User        string            `json:"User"`
+		AccessLevel store.AccessLevel `json:"AccessLevel"`
+	}
+
 	const method = "GET"
 	const urlTemplate = "/users/%s/repos/%s/collaborators"
 
@@ -512,6 +517,8 @@ func Test_listRepoCollaborators(t *testing.T) {
 	const validUser = "alice"
 	const validRepoEmpty = "auth"
 	const validRepoCollaborator = "openfmri"
+	const validRepoCollaboratorUser = "bob"
+	const validRepoCollaboratorLevel = "is-admin"
 
 	// test request fail for invalid user.
 	url := fmt.Sprintf(urlTemplate, invalidUser, invalidRepo)
@@ -527,20 +534,20 @@ func Test_listRepoCollaborators(t *testing.T) {
 		t.Fatalf("%v\n", err)
 	}
 
-	var collaborators []string
-
 	// test existing user, existing repository, repository w/o collaborators.
+	var repoCollaborators []collaborator
+
 	url = fmt.Sprintf(urlTemplate, validUser, validRepoEmpty)
 	resp, err := RunRequest(method, url, nil, nil, http.StatusOK)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
-	err = json.Unmarshal(resp.Body.Bytes(), &collaborators)
+	err = json.Unmarshal(resp.Body.Bytes(), &repoCollaborators)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(collaborators) != 0 {
-		t.Errorf("Expected empty list but got: %v\n", collaborators)
+	if len(repoCollaborators) != 0 {
+		t.Errorf("Expected empty list but got: %v\n", repoCollaborators)
 	}
 
 	// test existing user, existing repository, repository with collaborators.
@@ -549,12 +556,19 @@ func Test_listRepoCollaborators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
-	err = json.Unmarshal(resp.Body.Bytes(), &collaborators)
+	err = json.Unmarshal(resp.Body.Bytes(), &repoCollaborators)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(collaborators) != 1 {
-		t.Errorf("Expected one collaborator but got: %v\n", collaborators)
+	if len(repoCollaborators) != 1 {
+		t.Errorf("Expected one collaborator but got: %v\n", repoCollaborators)
+	}
+	if repoCollaborators[0].User != validRepoCollaboratorUser {
+		t.Errorf("Expected user %q but got %q\n", validRepoCollaboratorUser, repoCollaborators[0].User)
+	}
+	if repoCollaborators[0].AccessLevel.String() != validRepoCollaboratorLevel {
+		t.Errorf("Expected access level %q but got %q\n",
+			validRepoCollaboratorLevel, repoCollaborators[0].AccessLevel.String())
 	}
 
 	// TODO add tests for private repository and tests for non owner
@@ -574,7 +588,8 @@ func Test_putRepoCollaborator(t *testing.T) {
 	const invalidPutUser = "iDoNotExist"
 	const validPutUserAdditional = "gicmo"
 	const validPutUser = "bob"
-	const defaultAccess = "can-push"
+	const defaultAccess = "can-pull"
+	const putAccess = "can-push"
 
 	headerMap := make(map[string]string)
 
@@ -630,14 +645,6 @@ func Test_putRepoCollaborator(t *testing.T) {
 	headerMap["Authorization"] = "Bearer " + token
 	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validUser)
 	_, err = RunRequest(method, url, nil, headerMap, http.StatusBadRequest)
-	if err != nil {
-		t.Fatalf("%v\n", err)
-	}
-
-	// test request fail for existing user, existing repository, already registered existing collaborator.
-	headerMap["Authorization"] = "Bearer " + token
-	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validPutUser)
-	_, err = RunRequest(method, url, nil, headerMap, http.StatusConflict)
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}
@@ -710,6 +717,25 @@ func Test_putRepoCollaborator(t *testing.T) {
 	}
 	if level.String() != defaultAccess {
 		t.Fatalf("Expected user to be present with access level %q but got %q.\n", defaultAccess, level.String())
+	}
+
+	// test valid request for existing user, existing repository, update existing collaborator access level.
+	repoId = store.RepoId{Owner: validUser, Name: validRepoEmpty}
+
+	headerMap["Authorization"] = "Bearer " + token
+	headerMap["Content-Type"] = "application/json"
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoEmpty, validPutUser)
+	body = fmt.Sprintf(`{"permission": %q}`, putAccess)
+	_, err = RunRequest(method, url, strings.NewReader(body), headerMap, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	level, err = server.repos.GetAccessLevel(repoId, validPutUser)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	if level.String() != putAccess {
+		t.Fatalf("Expected user to be present with access level %q but got %q.\n", putAccess, level.String())
 	}
 }
 
