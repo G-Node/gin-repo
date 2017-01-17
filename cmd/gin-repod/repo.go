@@ -764,6 +764,10 @@ func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
 			i++
 		}
 		respBody, err = json.Marshal(repoCollaborators)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
