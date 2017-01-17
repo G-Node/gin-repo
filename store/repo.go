@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -79,6 +80,22 @@ func (level AccessLevel) String() string {
 	}
 
 	return "no-access"
+}
+
+// MarshalJSON implements Marshaler for AccessLevel.
+func (l *AccessLevel) MarshalJSON() ([]byte, error) {
+	return json.Marshal(l.String())
+}
+
+// UnmarshalJSON implements Unmarshaler for AccessLevel.
+func (l *AccessLevel) UnmarshalJSON(bytes []byte) error {
+	var data string
+	err := json.Unmarshal(bytes, &data)
+	if err != nil {
+		return err
+	}
+	*l, err = ParseAccessLevel(data)
+	return err
 }
 
 func ParseAccessLevel(str string) (AccessLevel, error) {
