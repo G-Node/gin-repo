@@ -750,8 +750,8 @@ func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type collaborator struct {
-		User        string `json:"User"`
-		AccessLevel string `json:"AccessLevel"`
+		User        string
+		AccessLevel store.AccessLevel
 	}
 
 	respBody := []byte("[]")
@@ -760,7 +760,7 @@ func (s *Server) listRepoCollaborators(w http.ResponseWriter, r *http.Request) {
 		i := 0
 		for v := range repoAccess {
 			repoCollaborators[i].User = v
-			repoCollaborators[i].AccessLevel = repoAccess[v].String()
+			repoCollaborators[i].AccessLevel = repoAccess[v]
 			i++
 		}
 		respBody, err = json.Marshal(repoCollaborators)
@@ -827,13 +827,9 @@ func (s *Server) putRepoCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// jquery 1.9+ ajax calls require a proper JSON response body, otherwise they will default to error.
-	returnBody, _ := json.Marshal(struct {
-		Response string `json:"Response"`
-	}{"Success"})
-
 	w.WriteHeader(http.StatusOK)
-	w.Write(returnBody)
+	// jquery 1.9+ ajax calls require a proper JSON response body, otherwise they will default to error.
+	io.WriteString(w, `{"Response": "Success"}`)
 }
 
 // deleteRepoCollaborator removes a user from the sharing folder of a repository.

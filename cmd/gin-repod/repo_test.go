@@ -505,8 +505,8 @@ func Test_patchRepoSettings(t *testing.T) {
 
 func Test_listRepoCollaborators(t *testing.T) {
 	type collaborator struct {
-		User        string `json:"User"`
-		AccessLevel string `json:"AccessLevel"`
+		User        string            `json:"User"`
+		AccessLevel store.AccessLevel `json:"AccessLevel"`
 	}
 
 	const method = "GET"
@@ -517,6 +517,8 @@ func Test_listRepoCollaborators(t *testing.T) {
 	const validUser = "alice"
 	const validRepoEmpty = "auth"
 	const validRepoCollaborator = "openfmri"
+	const validRepoCollaboratorUser = "bob"
+	const validRepoCollaboratorLevel = "is-admin"
 
 	// test request fail for invalid user.
 	url := fmt.Sprintf(urlTemplate, invalidUser, invalidRepo)
@@ -560,6 +562,13 @@ func Test_listRepoCollaborators(t *testing.T) {
 	}
 	if len(repoCollaborators) != 1 {
 		t.Errorf("Expected one collaborator but got: %v\n", repoCollaborators)
+	}
+	if repoCollaborators[0].User != validRepoCollaboratorUser {
+		t.Errorf("Expected user %q but got %q\n", validRepoCollaboratorUser, repoCollaborators[0].User)
+	}
+	if repoCollaborators[0].AccessLevel.String() != validRepoCollaboratorLevel {
+		t.Errorf("Expected access level %q but got %q\n",
+			validRepoCollaboratorLevel, repoCollaborators[0].AccessLevel.String())
 	}
 
 	// TODO add tests for private repository and tests for non owner
