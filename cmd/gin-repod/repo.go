@@ -914,11 +914,49 @@ func (s *Server) repoDescription(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-// listRepoCommits returns a list of all commits from a specified repository as json.
+// listRepoCommits returns a list of all commits from the branch of a specified repository as json.
 func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Println("Implement me")
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, `{"Response": "Implement me"}`)
+	ivars := mux.Vars(r)
+	rid, err := s.varsToRepoID(ivars)
 
+	ibranch := ivars["branch"]
+
+	// Do we actually need the check for branch
+	/*
+		if err != nil || ibranch != "master" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	*/
+
+	// Don't forget these checks once we have properly implemented the main method
+	/*
+		_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+		if !ok {
+			return
+		}
+	*/
+
+	repo, err := s.repos.OpenGitRepo(rid)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// Use internal server error for now until we properly deal
+	// with individual errors in ParseCommitList.
+	res, ok := repo.ParseCommitList(ibranch)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	enc := json.NewEncoder(w)
+	err = enc.Encode(res)
+	if err != nil {
+		s.log(ERROR, "Oh no, error while encoding after status ok was sent... %v\n", err)
+	}
 }
