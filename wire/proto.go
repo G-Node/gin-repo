@@ -45,3 +45,14 @@ type RefLine struct {
 	NewRef  string `json:"newref"`
 	RefName string `json:"refname"`
 }
+
+// CommitListItem represents a subset of information from a git commit
+type CommitListItem struct {
+	Commit       string   `json:"commit"`
+	Committer    string   `json:"committer"`
+	Author       string   `json:"author"`
+	DateIso      string   `json:"dateiso"`
+	DateRelative string   `json:"daterel"`
+	Subject      string   `json:"subject"`
+	Changes      []string `json:"changes"`
+}
