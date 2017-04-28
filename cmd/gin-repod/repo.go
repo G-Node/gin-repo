@@ -913,3 +913,12 @@ func (s *Server) repoDescription(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(body)
 }
+
+// listRepoCommits returns a list of all commits from a specified repository as json.
+func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
+
+	fmt.Println("Implement me")
+	w.WriteHeader(http.StatusOK)
+	io.WriteString(w, `{"Response": "Implement me"}`)
+
+}
