@@ -860,6 +860,10 @@ func Test_repoDescription(t *testing.T) {
 	const invalidRepo = "iDoNotExist"
 	const validUser = "alice"
 	const validRepo = "auth"
+	const validRepoShared = "openfmri"
+
+	const validUserPrivate = "bob"
+	const validRepoPrivate = "auth"
 
 	// test request fail for invalid user.
 	url := fmt.Sprintf(urlTemplate, invalidUser, invalidRepo)
@@ -904,6 +908,45 @@ func Test_repoDescription(t *testing.T) {
 	if result.Public != vis {
 		t.Fatalf("Expected visibility %t but got %t\n", vis, result.Public)
 	}
+	// Test non shared repository
+	if result.Shared {
+		t.Fatalf("Expected shared %t but got %t\n", false, result.Shared)
+	}
 
-	// TODO add tests for private repository and tests for non owner
+	// test valid user, valid shared repository
+	url = fmt.Sprintf(urlTemplate, validUser, validRepoShared)
+	resp, err = RunRequest(method, url, nil, nil, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	result = wire.Repo{}
+	err = json.Unmarshal(resp.Body.Bytes(), &result)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	if !result.Shared {
+		t.Fatalf("Expected shared %t but got %t\n", true, result.Shared)
+	}
+
+	// test valid user, valid private repository
+	headerMap := make(map[string]string)
+	token, err := server.users.TokenForUser(validUserPrivate)
+	if err != nil {
+		t.Fatalf("Could not make token for %q: %v, %v", validUserPrivate, token, err)
+	}
+	headerMap["Authorization"] = "Bearer " + token
+
+	url = fmt.Sprintf(urlTemplate, validUserPrivate, validRepoPrivate)
+	resp, err = RunRequest(method, url, nil, headerMap, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	result = wire.Repo{}
+	err = json.Unmarshal(resp.Body.Bytes(), &result)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	if result.Public {
+		t.Fatalf("Expected public %t but got %t\n", false, result.Public)
+	}
 }

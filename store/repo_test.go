@@ -176,3 +176,31 @@ func TestRepoStore_IdToPath(t *testing.T) {
 		t.Fatalf("Received unexpected repository path: %q\n", path)
 	}
 }
+
+func TestRepoStore_RepoShared(t *testing.T) {
+	const repoOwner = "alice"
+	const repoInvalid = "iDoNotExist"
+	const repoValid = "repod"
+	const repoShared = "openfmri"
+
+	// Test false on error when opening non existing repository
+	rid := RepoId{Owner: repoOwner, Name: repoInvalid}
+	ok := repos.RepoShared(rid)
+	if ok {
+		t.Fatalf("Expected fail when opening %v\n", rid)
+	}
+
+	// Test false on non shared repository
+	rid.Name = repoValid
+	ok = repos.RepoShared(rid)
+	if ok {
+		t.Fatalf("Expected fail when opening %v\n", rid)
+	}
+
+	// Test true on shared repository
+	rid.Name = repoShared
+	ok = repos.RepoShared(rid)
+	if !ok {
+		t.Fatalf("Expected success when opening %v\n", rid)
+	}
+}
