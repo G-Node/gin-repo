@@ -915,6 +915,7 @@ func (s *Server) repoDescription(w http.ResponseWriter, r *http.Request) {
 }
 
 // listRepoCommits returns a list of all commits from the branch of a specified repository as json.
+// Required access level is PullAccess.
 func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 
 	ivars := mux.Vars(r)
@@ -922,21 +923,10 @@ func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 
 	ibranch := ivars["branch"]
 
-	// Do we actually need the check for branch
-	/*
-		if err != nil || ibranch != "master" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-	*/
-
-	// Don't forget these checks once we have properly implemented the main method
-	/*
-		_, ok := s.checkAccess(w, r, rid, store.PullAccess)
-		if !ok {
-			return
-		}
-	*/
+	_, ok := s.checkAccess(w, r, rid, store.PullAccess)
+	if !ok {
+		return
+	}
 
 	repo, err := s.repos.OpenGitRepo(rid)
 	if err != nil {
