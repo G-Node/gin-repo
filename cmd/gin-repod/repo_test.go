@@ -950,3 +950,51 @@ func Test_repoDescription(t *testing.T) {
 		t.Fatalf("Expected public %t but got %t\n", false, result.Public)
 	}
 }
+
+func Test_listRepoCommits(t *testing.T) {
+	const method = "GET"
+	const urlTemplate = "/users/%s/repos/%s/commits/%s"
+
+	const invalidBranch = "iDoNotExist"
+	const validBranch = "master"
+	const validUser = "bob"
+	const validRepo = "repod"
+
+	headerMap := make(map[string]string)
+	token, err := server.users.TokenForUser(validUser)
+	if err != nil {
+		t.Fatalf("Could not make token for %q: %v, %v", validUser, token, err)
+	}
+	headerMap["Authorization"] = "Bearer " + token
+
+	// test request fail for insufficient access.
+	url := fmt.Sprintf(urlTemplate, validUser, validRepo, validBranch)
+	_, err = RunRequest(method, url, nil, nil, http.StatusNotFound)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test request fail for valid user, valid repository, invalid branch.
+	url = fmt.Sprintf(urlTemplate, validUser, validRepo, invalidBranch)
+	_, err = RunRequest(method, url, nil, headerMap, http.StatusNotFound)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test valid user, valid repository, valid branch
+	url = fmt.Sprintf(urlTemplate, validUser, validRepo, validBranch)
+	resp, err := RunRequest(method, url, nil, headerMap, http.StatusOK)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	// test content of resulting list of commits
+	result := []wire.CommitListItem{}
+	err = json.Unmarshal(resp.Body.Bytes(), &result)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	if len(result) == 0 {
+		t.Fatal("Expected a list of commits, but got none")
+	}
+}
