@@ -351,13 +351,9 @@ func (repo *Repository) ObjectForPath(root Object, pathstr string) (Object, erro
 	return node, nil
 }
 
-// parseCommitList executes a custom git log command from the branch of a
-// specified git repository and returns the resulting list of commits as an array.
-func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitListItem, bool) {
-	// TODO replace fmt.Printf with proper log messages
-	// TODO do better error handling, think about returning custom errors
-
-	// execute log command for repo at repoPath
+// ParseCommitList executes a custom git log command of the specified branch of the
+// associated git repository and returns the resulting list of commits as an array.
+func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitListItem, error) {
 	gdir := fmt.Sprintf("--git-dir=%s", repo.Path)
 
 	usefmt := "--pretty=format:"
@@ -372,15 +368,13 @@ func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitListItem, b
 	cmd := exec.Command("git", gdir, "log", branch, usefmt, "--name-status")
 	body, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("Failed running git log: %v\n", err)
-		return nil, false
+		return nil, fmt.Errorf("failed running git log: %s\n", err.Error())
 	}
 	var comList []wire.CommitListItem
 	r := bytes.NewReader(body)
 	br := bufio.NewReader(r)
 
 	var changesFlag bool
-
 	for {
 		// Consume line until newline character
 		l, err := br.ReadString('\n')
@@ -410,7 +404,7 @@ func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitListItem, b
 				// Setting changes flag so we know, that the next lines are probably file change notification lines.
 				changesFlag = true
 			default:
-				fmt.Printf("Encountered unexpected key: '%s', value: '%s'\n", key, strings.Trim(val, "\n"))
+				fmt.Printf("[W] commits: unexpected key %q, value %q\n", key, strings.Trim(val, "\n"))
 			}
 		} else if changesFlag && strings.Contains(l, "\t") {
 			comList[len(comList)-1].Changes = append(comList[len(comList)-1].Changes, l)
@@ -422,10 +416,8 @@ func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitListItem, b
 		}
 	}
 	if err != io.EOF && err != nil {
-		fmt.Printf("Encountered error: %v\n", err)
-		return nil, false
+		return nil, err
 	}
-	fmt.Printf("Done parsing. There where %d commits\n", len(comList))
 
-	return comList, true
+	return comList, nil
 }

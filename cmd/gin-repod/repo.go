@@ -944,10 +944,9 @@ func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Use internal server error for now until we properly deal
-	// with individual errors in ParseCommitList.
-	res, ok := repo.ParseCommitList(ibranch)
-	if !ok {
+	res, err := repo.ParseCommitList(ibranch)
+	if err != nil {
+		s.log(ERROR, "%v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
