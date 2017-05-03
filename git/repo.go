@@ -421,3 +421,19 @@ func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitListItem, e
 
 	return comList, nil
 }
+
+// BranchExists runs the git show-ref command. It will return
+// true, if the git command does not end with an error, false
+// in any other case.
+func (repo *Repository) BranchExists(branch string) bool {
+	gdir := fmt.Sprintf("--git-dir=%s", repo.Path)
+	ref := fmt.Sprintf("refs/heads/%s", branch)
+
+	cmd := exec.Command("git", gdir, "show-ref", ref)
+	_, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+
+	return true
+}
