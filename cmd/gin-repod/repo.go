@@ -934,6 +934,12 @@ func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ok = repo.BranchExists(ibranch)
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	res, err := repo.ParseCommitList(ibranch)
 	if err != nil {
 		s.log(ERROR, "%v", err)
