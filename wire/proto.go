@@ -16,12 +16,16 @@ type CreateRepo struct {
 	Public      bool
 }
 
+// Repo is used to export basic information about a repository.
+// Public states whether a repository is publicly available.
+// Shared states whether a repository is shared with a collaborator.
 type Repo struct {
 	Name        string
 	Owner       string
 	Description string
-	Public      bool
 	Head        string
+	Public      bool
+	Shared      bool
 }
 
 type Branch struct {

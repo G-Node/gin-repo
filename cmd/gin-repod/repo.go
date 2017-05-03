@@ -114,6 +114,7 @@ func (s *Server) repoToWire(id store.RepoId, repo *git.Repository) (wire.Repo, e
 		s.log(WARN, "could not get repo visibility: %v", err)
 		public = false
 	}
+	shared := s.repos.RepoShared(id)
 
 	wr := wire.Repo{
 		Name:        id.Name,
@@ -121,6 +122,7 @@ func (s *Server) repoToWire(id store.RepoId, repo *git.Repository) (wire.Repo, e
 		Description: repo.ReadDescription(),
 		Head:        "master",
 		Public:      public,
+		Shared:      shared,
 	}
 
 	return wr, nil
