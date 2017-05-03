@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -296,6 +297,29 @@ func (store *RepoStore) ListPublicRepos() ([]RepoId, error) {
 func (store *RepoStore) OpenGitRepo(id RepoId) (*git.Repository, error) {
 	path := store.IdToPath(id)
 	return git.OpenRepository(path)
+}
+
+// RepoShared returns true in case a repository contains entries in the gin sharing folder
+// and false in any other case. Errors are logged but not returned.
+func (store *RepoStore) RepoShared(id RepoId) bool {
+	base := store.IdToPath(id)
+	p := filepath.Join(base, "gin", "sharing")
+
+	f, err := os.Open(p)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[W] error opening %q\n encountered error: %v\n", p, err)
+		return false
+	}
+	defer f.Close()
+
+	_, err = f.Readdir(1)
+	if err != nil {
+		if err != io.EOF {
+			fmt.Fprintf(os.Stderr, "[W] error reading %q\n encountered error: %v\n", p, err)
+		}
+		return false
+	}
+	return true
 }
 
 func (store *RepoStore) GetRepoVisibility(id RepoId) (bool, error) {
