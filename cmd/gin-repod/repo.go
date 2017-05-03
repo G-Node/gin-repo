@@ -934,7 +934,12 @@ func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ok = repo.BranchExists(ibranch)
+	ok, err = repo.BranchExists(ibranch)
+	if err != nil {
+		s.log(WARN, "error checking branch %q [%v]", ibranch, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -942,7 +947,7 @@ func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 
 	res, err := repo.ParseCommitList(ibranch)
 	if err != nil {
-		s.log(ERROR, "%v", err)
+		s.log(WARN, "error parsing commitlist [%v]", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -952,6 +957,6 @@ func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	err = enc.Encode(res)
 	if err != nil {
-		s.log(ERROR, "Oh no, error while encoding after status ok was sent... %v\n", err)
+		s.log(WARN, "error after status ok sent [%v]", err)
 	}
 }
