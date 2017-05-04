@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/G-Node/gin-repo/git"
 	"github.com/G-Node/gin-repo/store"
@@ -912,6 +914,62 @@ func (s *Server) repoDescription(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(body)
+}
+
+// commitsToWire receives a byte array containing the raw output of a git log command,
+// parses the content of the array into []wire.CommitSummary and returns this array.
+func commitsToWire(rawCommits []byte, sep string) ([]wire.CommitSummary, error) {
+	var err error
+	var comList []wire.CommitSummary
+	r := bytes.NewReader(rawCommits)
+	br := bufio.NewReader(r)
+
+	var changesFlag bool
+	for {
+		// Consume line until newline character
+		l, err := br.ReadString('\n')
+
+		if strings.Contains(l, sep) {
+			splitList := strings.SplitN(l, sep, 2)
+
+			key := splitList[0]
+			val := splitList[1]
+			switch key {
+			case "Commit":
+				// reset non key line flags
+				changesFlag = false
+				newCommit := wire.CommitSummary{Commit: val}
+				comList = append(comList, newCommit)
+			case "Committer":
+				comList[len(comList)-1].Committer = val
+			case "Author":
+				comList[len(comList)-1].Author = val
+			case "Date-iso":
+				comList[len(comList)-1].DateIso = val
+			case "Date-rel":
+				comList[len(comList)-1].DateRelative = val
+			case "Subject":
+				comList[len(comList)-1].Subject = val
+			case "Changes":
+				// Setting changes flag so we know, that the next lines are probably file change notification lines.
+				changesFlag = true
+			default:
+				fmt.Printf("[W] commits: unexpected key %q, value %q\n", key, strings.Trim(val, "\n"))
+			}
+		} else if changesFlag && strings.Contains(l, "\t") {
+			comList[len(comList)-1].Changes = append(comList[len(comList)-1].Changes, l)
+		}
+
+		// Breaks at the latest when EOF err is raised
+		if err != nil {
+			break
+		}
+	}
+	if err != io.EOF && err != nil {
+		return nil, err
+	}
+
+	return comList, nil
 }
 
 // listRepoCommits returns a list of all commits from the branch of a specified repository as json.
