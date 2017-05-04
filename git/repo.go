@@ -353,7 +353,7 @@ func (repo *Repository) ObjectForPath(root Object, pathstr string) (Object, erro
 
 // ParseCommitList executes a custom git log command of the specified branch of the
 // associated git repository and returns the resulting list of commits as an array.
-func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitListItem, error) {
+func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitSummary, error) {
 	gdir := fmt.Sprintf("--git-dir=%s", repo.Path)
 
 	usefmt := "--pretty=format:"
@@ -370,7 +370,7 @@ func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitListItem, e
 	if err != nil {
 		return nil, fmt.Errorf("failed running git log: %s\n", err.Error())
 	}
-	var comList []wire.CommitListItem
+	var comList []wire.CommitSummary
 	r := bytes.NewReader(body)
 	br := bufio.NewReader(r)
 
@@ -388,7 +388,7 @@ func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitListItem, e
 			case "Commit":
 				// reset non key line flags
 				changesFlag = false
-				newCommit := wire.CommitListItem{Commit: val}
+				newCommit := wire.CommitSummary{Commit: val}
 				comList = append(comList, newCommit)
 			case "Committer":
 				comList[len(comList)-1].Committer = val

@@ -818,6 +818,9 @@ func Test_deleteRepoCollaborator(t *testing.T) {
 	// test valid request for existing user, existing repository, with authorization, valid delete username.
 	repoId := store.RepoId{Owner: validUser, Name: validRepoCollaborator}
 	oldShared, err := server.repos.ListSharedAccess(repoId)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
 	headerMap["Authorization"] = "Bearer " + token
 	url = fmt.Sprintf(urlTemplate, validUser, validRepoCollaborator, validDeleteUser)
 	_, err = RunRequest(method, url, nil, headerMap, http.StatusOK)
@@ -989,7 +992,7 @@ func Test_listRepoCommits(t *testing.T) {
 	}
 
 	// test content of resulting list of commits
-	result := []wire.CommitListItem{}
+	result := []wire.CommitSummary{}
 	err = json.Unmarshal(resp.Body.Bytes(), &result)
 	if err != nil {
 		t.Fatalf("%v\n", err)

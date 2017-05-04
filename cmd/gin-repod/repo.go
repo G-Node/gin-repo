@@ -920,6 +920,10 @@ func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 
 	ivars := mux.Vars(r)
 	rid, err := s.varsToRepoID(ivars)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	ibranch := ivars["branch"]
 
@@ -939,8 +943,7 @@ func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 		s.log(WARN, "error checking branch %q [%v]", ibranch, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
-	}
-	if !ok {
+	} else if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
