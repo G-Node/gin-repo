@@ -1006,9 +1006,16 @@ func (s *Server) listRepoCommits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := repo.ParseCommitList(ibranch)
+	raw, err := repo.CommitsForRef(ibranch)
 	if err != nil {
-		s.log(WARN, "error parsing commitlist [%v]", err)
+		s.log(WARN, "error fetching commits [%v]", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	res, err := commitsToWire(raw, ":=")
+	if err != nil {
+		s.log(WARN, "error wiring commits [%v]", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
