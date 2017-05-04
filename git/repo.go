@@ -378,9 +378,7 @@ func (repo *Repository) BranchExists(branch string) (bool, error) {
 	body, err := cmd.Output()
 	if err != nil {
 		return false, err
-	}
-
-	if len(body) == 0 {
+	} else if len(body) == 0 {
 		return false, nil
 	}
 
