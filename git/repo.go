@@ -1,18 +1,13 @@
 package git
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
-
-	"github.com/G-Node/gin-repo/wire"
 )
 
 //Repository represents an on disk git repository.
@@ -351,75 +346,27 @@ func (repo *Repository) ObjectForPath(root Object, pathstr string) (Object, erro
 	return node, nil
 }
 
-// ParseCommitList executes a custom git log command of the specified branch of the
-// associated git repository and returns the resulting list of commits as an array.
-func (repo *Repository) ParseCommitList(branch string) ([]wire.CommitSummary, error) {
+// usefmt is the option string used by CommitsForRef to return a formatted git commit log.
+const usefmt = `--pretty=format:
+Commit:=%H%n
+Committer:=%cn%n
+Author:=%an%n
+Date-iso:=%ai%n
+Date-rel:=%ar%n
+Subject:=%s%n
+Changes:=`
+
+// CommitsForRef executes a custom git log command for the specified ref of the
+// associated git repository and returns the resulting byte array.
+func (repo *Repository) CommitsForRef(ref string) ([]byte, error) {
 	gdir := fmt.Sprintf("--git-dir=%s", repo.Path)
 
-	usefmt := "--pretty=format:"
-	usefmt += "Commit:=%H%n"
-	usefmt += "Committer:=%cn%n"
-	usefmt += "Author:=%an%n"
-	usefmt += "Date-iso:=%ai%n"
-	usefmt += "Date-rel:=%ar%n"
-	usefmt += "Subject:=%s%n"
-	usefmt += "Changes:="
-
-	cmd := exec.Command("git", gdir, "log", branch, usefmt, "--name-status")
+	cmd := exec.Command("git", gdir, "log", ref, usefmt, "--name-status")
 	body, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed running git log: %s\n", err.Error())
 	}
-	var comList []wire.CommitSummary
-	r := bytes.NewReader(body)
-	br := bufio.NewReader(r)
-
-	var changesFlag bool
-	for {
-		// Consume line until newline character
-		l, err := br.ReadString('\n')
-
-		if strings.Contains(l, ":=") {
-			splitList := strings.SplitN(l, ":=", 2)
-
-			key := splitList[0]
-			val := splitList[1]
-			switch key {
-			case "Commit":
-				// reset non key line flags
-				changesFlag = false
-				newCommit := wire.CommitSummary{Commit: val}
-				comList = append(comList, newCommit)
-			case "Committer":
-				comList[len(comList)-1].Committer = val
-			case "Author":
-				comList[len(comList)-1].Author = val
-			case "Date-iso":
-				comList[len(comList)-1].DateIso = val
-			case "Date-rel":
-				comList[len(comList)-1].DateRelative = val
-			case "Subject":
-				comList[len(comList)-1].Subject = val
-			case "Changes":
-				// Setting changes flag so we know, that the next lines are probably file change notification lines.
-				changesFlag = true
-			default:
-				fmt.Printf("[W] commits: unexpected key %q, value %q\n", key, strings.Trim(val, "\n"))
-			}
-		} else if changesFlag && strings.Contains(l, "\t") {
-			comList[len(comList)-1].Changes = append(comList[len(comList)-1].Changes, l)
-		}
-
-		// Breaks at the latest when EOF err is raised
-		if err != nil {
-			break
-		}
-	}
-	if err != io.EOF && err != nil {
-		return nil, err
-	}
-
-	return comList, nil
+	return body, nil
 }
 
 // BranchExists runs the "git branch <branchname> --list" command.
