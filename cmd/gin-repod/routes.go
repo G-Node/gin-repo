@@ -29,4 +29,5 @@ func (s *Server) SetupRoutes() {
 	r.HandleFunc("/users/{user}/repos/{repo}/objects/{object}", s.getObject).Methods("GET")
 	r.HandleFunc("/users/{user}/repos/{repo}/browse/{branch}", s.browseRepo).Methods("GET")
 	r.HandleFunc("/users/{user}/repos/{repo}/browse/{branch}/{path:.*}", s.browseRepo).Methods("GET")
+	r.HandleFunc("/users/{user}/repos/{repo}/commits/{branch}", s.listRepoCommits).Methods("GET")
 }

@@ -345,3 +345,42 @@ func (repo *Repository) ObjectForPath(root Object, pathstr string) (Object, erro
 
 	return node, nil
 }
+
+// usefmt is the option string used by CommitsForRef to return a formatted git commit log.
+const usefmt = `--pretty=format:
+Commit:=%H%n
+Committer:=%cn%n
+Author:=%an%n
+Date-iso:=%ai%n
+Date-rel:=%ar%n
+Subject:=%s%n
+Changes:=`
+
+// CommitsForRef executes a custom git log command for the specified ref of the
+// associated git repository and returns the resulting byte array.
+func (repo *Repository) CommitsForRef(ref string) ([]byte, error) {
+	gdir := fmt.Sprintf("--git-dir=%s", repo.Path)
+
+	cmd := exec.Command("git", gdir, "log", ref, usefmt, "--name-status")
+	body, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed running git log: %s\n", err.Error())
+	}
+	return body, nil
+}
+
+// BranchExists runs the "git branch <branchname> --list" command.
+// It will return an error, if the command fails, true, if the result is not empty and false otherwise.
+func (repo *Repository) BranchExists(branch string) (bool, error) {
+	gdir := fmt.Sprintf("--git-dir=%s", repo.Path)
+
+	cmd := exec.Command("git", gdir, "branch", branch, "--list")
+	body, err := cmd.Output()
+	if err != nil {
+		return false, err
+	} else if len(body) == 0 {
+		return false, nil
+	}
+
+	return true, nil
+}
