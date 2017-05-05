@@ -1,7 +1,10 @@
 package git
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -356,10 +359,84 @@ Date-rel:=%ar%n
 Subject:=%s%n
 Changes:=`
 
+// CommitSummary represents a subset of information from a git commit.
+type CommitSummary struct {
+	Commit       string
+	Committer    string
+	Author       string
+	DateIso      string
+	DateRelative string
+	Subject      string
+	Changes      []string
+}
+
 // CommitsForRef executes a custom git log command for the specified ref of the
 // associated git repository and returns the resulting byte array.
-func (repo *Repository) CommitsForRef(ref string) ([]byte, error) {
-	gdir := fmt.Sprintf("--git-dir=%s", repo.Path)
+func (repo *Repository) CommitsForRef(ref string) ([]CommitSummary, error) {
+
+	raw, err := commitsForRef(repo.Path, ref, usefmt)
+	if err != nil {
+		return nil, err
+	}
+
+	sep := ":="
+	var comList []CommitSummary
+	r := bytes.NewReader(raw)
+	br := bufio.NewReader(r)
+
+	var changesFlag bool
+	for {
+		// Consume line until newline character
+		l, err := br.ReadString('\n')
+
+		if strings.Contains(l, sep) {
+			splitList := strings.SplitN(l, sep, 2)
+
+			key := splitList[0]
+			val := splitList[1]
+			switch key {
+			case "Commit":
+				// reset non key line flags
+				changesFlag = false
+				newCommit := CommitSummary{Commit: val}
+				comList = append(comList, newCommit)
+			case "Committer":
+				comList[len(comList)-1].Committer = val
+			case "Author":
+				comList[len(comList)-1].Author = val
+			case "Date-iso":
+				comList[len(comList)-1].DateIso = val
+			case "Date-rel":
+				comList[len(comList)-1].DateRelative = val
+			case "Subject":
+				comList[len(comList)-1].Subject = val
+			case "Changes":
+				// Setting changes flag so we know, that the next lines are probably file change notification lines.
+				changesFlag = true
+			default:
+				fmt.Printf("[W] commits: unexpected key %q, value %q\n", key, strings.Trim(val, "\n"))
+			}
+		} else if changesFlag && strings.Contains(l, "\t") {
+			comList[len(comList)-1].Changes = append(comList[len(comList)-1].Changes, l)
+		}
+
+		// Breaks at the latest when EOF err is raised
+		if err != nil {
+			break
+		}
+	}
+	if err != io.EOF && err != nil {
+		return nil, err
+	}
+
+	return comList, nil
+}
+
+// commitsForRef executes a custom git log command for the specified ref of the
+// given git repository with the specified log format string and returns the resulting byte array.
+// Function is kept private to force handling of the []byte inside the package.
+func commitsForRef(repoPath, ref, usefmt string) ([]byte, error) {
+	gdir := fmt.Sprintf("--git-dir=%s", repoPath)
 
 	cmd := exec.Command("git", gdir, "log", ref, usefmt, "--name-status")
 	body, err := cmd.Output()
